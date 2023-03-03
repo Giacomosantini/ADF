@@ -1,0 +1,9 @@
+{
+	"name": "adfGiacomoCorsoA",
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "2364aee2-33f5-4c66-b099-ac544a13509d",
+		"tenantId": "cf36141c-ddd7-45a7-b073-111f66d0b30c"
+	}
+}
