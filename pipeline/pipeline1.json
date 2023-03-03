@@ -31,7 +31,7 @@
 					},
 					"sink": {
 						"type": "AzureSqlSink",
-						"preCopyScript": "truncate table [dbo].[Sales_LOAD]",
+						"preCopyScript": "truncate table dbo.Sales_LOAD",
 						"writeBehavior": "insert",
 						"sqlWriterUseTableLock": false,
 						"disableMetricsCollection": false
