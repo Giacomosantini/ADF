@@ -1,5 +1,5 @@
 {
-	"name": "LoadCandyShack_copy1",
+	"name": "LoadSugarJson",
 	"properties": {
 		"activities": [
 			{
@@ -21,8 +21,8 @@
 							"type": "AzureBlobStorageReadSettings",
 							"recursive": true,
 							"modifiedDatetimeStart": "2023-03-03T00:00:00.000Z",
-							"wildcardFolderPath": " azure-data-factory-by-example-main / SampleData / SugarCube / 2020 / Q2",
-							"wildcardFileName": "*",
+							"wildcardFolderPath": "azure-data-factory-by-example-main/SampleData/SugarCube/2020/Q2",
+							"wildcardFileName": "*.json",
 							"enablePartitionDiscovery": false
 						},
 						"formatSettings": {
@@ -36,17 +36,7 @@
 						"sqlWriterUseTableLock": false,
 						"disableMetricsCollection": false
 					},
-					"enableStaging": false,
-					"translator": {
-						"type": "TabularTranslator",
-						"mappings": [
-							{
-								"source": {
-									"path": "$['Column_1']"
-								}
-							}
-						]
-					}
+					"enableStaging": false
 				},
 				"inputs": [
 					{
