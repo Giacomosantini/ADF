@@ -1,0 +1,130 @@
+{
+	"name": "DS_FileSystem_DelimitedText_WithoutCompression",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "FileSystem",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"host": {
+					"value": "@dataset().host",
+					"type": "Expression"
+				},
+				"user": {
+					"value": "@dataset().user",
+					"type": "Expression"
+				},
+				"akv_name": {
+					"value": "@dataset().akv_name",
+					"type": "Expression"
+				},
+				"akv_secret_pwd": {
+					"value": "@dataset().akv_secret_pwd",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"host": {
+				"type": "string",
+				"defaultValue": "\\\\nasto4\\ASCOLTIONLINE\\"
+			},
+			"user": {
+				"type": "string",
+				"defaultValue": "rai\\srvascolti"
+			},
+			"akv_name": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"akv_secret_pwd": {
+				"type": "string",
+				"defaultValue": "var-nasto4-ao-pwd"
+			},
+			"file_path": {
+				"type": "string",
+				"defaultValue": "FullDayByViewing"
+			},
+			"file_name": {
+				"type": "string",
+				"defaultValue": "Nielsen-20231129-FullDay-ByViewing"
+			},
+			"file_delimiter": {
+				"type": "string",
+				"defaultValue": ";"
+			},
+			"file_extension": {
+				"type": "string",
+				"defaultValue": ".csv"
+			},
+			"file_encoding": {
+				"type": "string",
+				"defaultValue": "UTF-8"
+			},
+			"file_row_delimiter": {
+				"type": "string",
+				"defaultValue": "\\r\\n"
+			},
+			"quote_character": {
+				"type": "string",
+				"defaultValue": "\\\""
+			},
+			"escape_character": {
+				"type": "string",
+				"defaultValue": "\\\""
+			},
+			"first_row_as_header": {
+				"type": "string",
+				"defaultValue": "true"
+			},
+			"null_value": {
+				"type": "string",
+				"defaultValue": " "
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "FileServerLocation",
+				"fileName": {
+					"value": "@if(\n    equals(length(trim(coalesce(dataset().file_extension, ''))),0),\n    dataset().file_name,\n    concat(dataset().file_name,dataset().file_extension)\n)",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().file_path",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": {
+				"value": "@dataset().file_delimiter",
+				"type": "Expression"
+			},
+			"rowDelimiter": {
+				"value": "@dataset().file_row_delimiter",
+				"type": "Expression"
+			},
+			"encodingName": {
+				"value": "@dataset().file_encoding",
+				"type": "Expression"
+			},
+			"escapeChar": {
+				"value": "@dataset().escape_character",
+				"type": "Expression"
+			},
+			"firstRowAsHeader": {
+				"value": "@bool(dataset().first_row_as_header)",
+				"type": "Expression"
+			},
+			"nullValue": {
+				"value": "@dataset().null_value",
+				"type": "Expression"
+			},
+			"quoteChar": {
+				"value": "@dataset().quote_character",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

@@ -1,0 +1,44 @@
+{
+	"name": "INTOTALAUDIENCE_1",
+	"properties": {
+		"annotations": [
+			"Total Audience"
+		],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "01_CopyAndProcess",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"PIPELINE_CD": "INTOTALAUDIENCE"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Week",
+				"interval": 1,
+				"startTime": "2024-04-09T17:00:00",
+				"timeZone": "W. Europe Standard Time",
+				"schedule": {
+					"minutes": [
+						0
+					],
+					"hours": [
+						11
+					],
+					"weekDays": [
+						"Monday",
+						"Tuesday",
+						"Wednesday",
+						"Thursday",
+						"Friday"
+					]
+				}
+			}
+		}
+	}
+}

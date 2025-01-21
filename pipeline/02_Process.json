@@ -1,0 +1,372 @@
+{
+	"name": "02_Process",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfNoQueueTableNameProvided",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(length(coalesce(pipeline().parameters.QUEUE_TABLE_NAME,'')),0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CountQueueLength",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('\nSELECT\n\tCOALESCE(SUM([DIM].[TRIGGER_PROCESS_FL]), 0) AS COUNT_NU\nFROM\n\t[CFG].[',pipeline().parameters.QUEUE_TABLE_NAME,'] AS [QUE]\n\tINNER JOIN [DIM].[',pipeline().parameters.QUEUE_TABLE_NAME,'] AS [DIM]\n\tON [QUE].[READY_NU] = [DIM].[READY_NU]\nWHERE\n\t[QUE].[PIPELINE_CD] = ''', pipeline().parameters.PIPELINE_CD,''';'\n)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DS_AzureSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"fully_qualified_domain_name": {
+											"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+											"type": "Expression"
+										},
+										"database_name": {
+											"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						},
+						{
+							"name": "SetSkipOrRunFalse",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CountQueueLength",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "skip_or_run",
+								"value": {
+									"value": "@if(\n\tgreater(activity('CountQueueLength').output.firstRow.COUNT_NU, 0),\n\t'PROCESS',\n\t'SKIPPED_EMPTYQUEUE'\n)",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "SetSkipOrRunTrue",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "skip_or_run",
+								"value": "PROCESS"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "SkipOrRun",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "IfNoQueueTableNameProvided",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@if(\n    and(\n        and(\n            not(equals(pipeline().parameters.ACTIVE_FROM_HR, 'NULL')),\n            not(equals(pipeline().parameters.ACTIVE_TO_HR, 'NULL'))\n        ),\n        if(\n            greater(pipeline().parameters.ACTIVE_FROM_HR, pipeline().parameters.ACTIVE_TO_HR),\n            and(\n                less(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_FROM_HR\n                    )\n                ,greater(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_TO_HR\n                    )\n                ),\n            or(\n                less(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_FROM_HR\n                    )\n                ,greater(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_TO_HR\n                    )\n                )\n        )\n    ),\n    'SKIPPED_SLEEP',\n    variables('skip_or_run')\n)",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "SKIPPED_SLEEP",
+							"activities": [
+								{
+									"name": "ExecuteCopySkippedSleep",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_Copy_Skip",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"ACTIVITY_DE": {
+												"value": "@concat('PROCESS_', pipeline().parameters.OUTPUT_CATEGORY_CD, pipeline().parameters.ADB_NOTEBOOK_PATH_CD)",
+												"type": "Expression"
+											},
+											"ACTIVITY_STATUS_CD": "SKIPPED_SLEEP",
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ERROR_DE": "NULL"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "SKIPPED_EMPTYQUEUE",
+							"activities": [
+								{
+									"name": "ExecuteCopySkippedEmptyQueue",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_Copy_Skip",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"ACTIVITY_DE": {
+												"value": "@concat('PROCESS_', pipeline().parameters.OUTPUT_CATEGORY_CD, pipeline().parameters.ADB_NOTEBOOK_PATH_CD)",
+												"type": "Expression"
+											},
+											"ACTIVITY_STATUS_CD": "SKIPPED_EMPTYQUEUE",
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ERROR_DE": "NULL"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "PROCESS",
+							"activities": [
+								{
+									"name": "ExecuteProcessNotebook",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_Process_Notebook",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_TS": {
+												"value": "@pipeline().parameters.TRIGGER_TS",
+												"type": "Expression"
+											},
+											"OUTPUT_CATEGORY_CD": {
+												"value": "@pipeline().parameters.OUTPUT_CATEGORY_CD",
+												"type": "Expression"
+											},
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_URL": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_URL",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_RESOURCE_CD": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_RESOURCE_CD",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_INIT_SCRIPT_PATH_CD": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_INIT_SCRIPT_PATH_CD",
+												"type": "Expression"
+											},
+											"ADB_NOTEBOOK_PATH_CD": {
+												"value": "@pipeline().parameters.ADB_NOTEBOOK_PATH_CD",
+												"type": "Expression"
+											},
+											"ADB_EXISTING_CLUSTER_CD": {
+												"value": "@pipeline().parameters.ADB_EXISTING_CLUSTER_CD",
+												"type": "Expression"
+											},
+											"ADB_INSTANCE_POOL_CD": {
+												"value": "@pipeline().parameters.ADB_INSTANCE_POOL_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_VERSION_CD": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_VERSION_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_NODE_TYPE_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_WORKERS_CD": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_WORKERS_CD",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			},
+			"QUEUE_TABLE_NAME": {
+				"type": "string"
+			},
+			"OUTPUT_CATEGORY_CD": {
+				"type": "string"
+			},
+			"ACTIVE_FROM_HR": {
+				"type": "string",
+				"defaultValue": "NULL"
+			},
+			"ACTIVE_TO_HR": {
+				"type": "string",
+				"defaultValue": "NULL"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_URL": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_RESOURCE_CD": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_INIT_SCRIPT_PATH_CD": {
+				"type": "string"
+			},
+			"ADB_NOTEBOOK_PATH_CD": {
+				"type": "string"
+			},
+			"ADB_EXISTING_CLUSTER_CD": {
+				"type": "string"
+			},
+			"ADB_INSTANCE_POOL_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_VERSION_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_WORKERS_CD": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"skip_or_run": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

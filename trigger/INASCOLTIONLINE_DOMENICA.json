@@ -1,0 +1,40 @@
+{
+	"name": "INASCOLTIONLINE_DOMENICA",
+	"properties": {
+		"annotations": [
+			"Ascolti Online"
+		],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "01_CopyAndProcess",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"PIPELINE_CD": "INASCOLTIONLINE"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Week",
+				"interval": 1,
+				"startTime": "2024-07-29T12:51:00",
+				"timeZone": "W. Europe Standard Time",
+				"schedule": {
+					"minutes": [
+						0
+					],
+					"hours": [
+						17
+					],
+					"weekDays": [
+						"Sunday"
+					]
+				}
+			}
+		}
+	}
+}

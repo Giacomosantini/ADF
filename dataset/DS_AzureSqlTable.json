@@ -1,0 +1,32 @@
+{
+	"name": "DS_AzureSqlTable",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSqlDatabase",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"fully_qualified_domain_name": {
+					"value": "@dataset().fully_qualified_domain_name",
+					"type": "Expression"
+				},
+				"database_name": {
+					"value": "@dataset().database_name",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"fully_qualified_domain_name": {
+				"type": "string",
+				"defaultValue": "sql-ao-pov.database.windows.net"
+			},
+			"database_name": {
+				"type": "string",
+				"defaultValue": "sqldb-ao-pov"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	}
+}

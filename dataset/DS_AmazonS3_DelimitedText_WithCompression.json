@@ -1,0 +1,135 @@
+{
+	"name": "DS_AmazonS3_DelimitedText_WithCompression",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AmazonS3",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"region": {
+					"value": "@dataset().region",
+					"type": "Expression"
+				},
+				"akv_name": {
+					"value": "@dataset().akv_name",
+					"type": "Expression"
+				},
+				"access_key_id_secret_name": {
+					"value": "@dataset().access_key_id_secret_name",
+					"type": "Expression"
+				},
+				"secret_access_key_secret_name": {
+					"value": "@dataset().secret_access_key_secret_name",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"bucket": {
+				"type": "string",
+				"defaultValue": "total-audience"
+			},
+			"region": {
+				"type": "string",
+				"defaultValue": "eu-south-1"
+			},
+			"akv_name": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"access_key_id_secret_name": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-access-key-id"
+			},
+			"secret_access_key_secret_name": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-secret-access-key"
+			},
+			"file_path": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			},
+			"file_delimiter": {
+				"type": "string"
+			},
+			"file_extension": {
+				"type": "string"
+			},
+			"file_compression": {
+				"type": "string",
+				"defaultValue": "ZipDeflate"
+			},
+			"file_encoding": {
+				"type": "string"
+			},
+			"file_row_delimiter": {
+				"type": "string"
+			},
+			"quote_character": {
+				"type": "string"
+			},
+			"escape_character": {
+				"type": "string"
+			},
+			"first_row_as_header": {
+				"type": "string"
+			},
+			"null_value": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AmazonS3Location",
+				"bucketName": {
+					"value": "@dataset().bucket",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().file_path",
+					"type": "Expression"
+				},
+				"fileName": {
+					"value": "@if(\n    equals(length(trim(coalesce(dataset().file_extension, ''))),0),\n    dataset().file_name,\n    concat(dataset().file_name,dataset().file_extension)\n)",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": {
+				"value": "@dataset().file_delimiter",
+				"type": "Expression"
+			},
+			"rowDelimiter": {
+				"value": "@dataset().file_row_delimiter",
+				"type": "Expression"
+			},
+			"compressionCodec": {
+				"value": "@dataset().file_compression",
+				"type": "Expression"
+			},
+			"encodingName": {
+				"value": "@dataset().file_encoding",
+				"type": "Expression"
+			},
+			"escapeChar": {
+				"value": "@dataset().escape_character",
+				"type": "Expression"
+			},
+			"firstRowAsHeader": {
+				"value": "@bool(dataset().first_row_as_header)",
+				"type": "Expression"
+			},
+			"nullValue": {
+				"value": "@dataset().null_value",
+				"type": "Expression"
+			},
+			"quoteChar": {
+				"value": "@dataset().quote_character",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	}
+}

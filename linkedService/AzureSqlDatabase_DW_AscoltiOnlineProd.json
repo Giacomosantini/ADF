@@ -1,0 +1,12 @@
+{
+	"name": "AzureSqlDatabase_DW_AscoltiOnlineProd",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "integrated security=False;encrypt=True;connection timeout=30;data source=dwascoltionlineprod.database.windows.net;initial catalog=DW_AscoltiOnlineProd;user id=adf-ao-pov",
+			"encryptedCredential": "ew0KICAiVmVyc2lvbiI6ICIyMDE3LTExLTMwIiwNCiAgIlByb3RlY3Rpb25Nb2RlIjogIktleSIsDQogICJTZWNyZXRDb250ZW50VHlwZSI6ICJQbGFpbnRleHQiLA0KICAiQ3JlZGVudGlhbElkIjogIkRBVEFGQUNUT1JZQEE1NzFGRjdDLUZBMUYtNDc3MS04QUFFLThDMjc5ODI2OTc1QV8wZmM1OTA0NC1hYjg3LTRjMWItOTdmZC1lYzEwZWFiZGE4MTkiDQp9"
+		}
+	}
+}

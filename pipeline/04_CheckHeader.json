@@ -1,0 +1,645 @@
+{
+	"name": "04_CheckHeader",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetFileHeader",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "InsertLogHeaderCheckRunning",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DS_AzureDataLakeStorageGen2_Parquet",
+						"type": "DatasetReference",
+						"parameters": {
+							"storage_acount": {
+								"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+								"type": "Expression"
+							},
+							"blob_container": {
+								"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+								"type": "Expression"
+							},
+							"file_path": {
+								"value": "@pipeline().parameters.ADLS_FILE_PATH_CD",
+								"type": "Expression"
+							},
+							"file_name": {
+								"value": "@pipeline().parameters.ADLS_FILE_NAME_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"fieldList": [
+						"structure"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "ParquetReadSettings"
+					}
+				}
+			},
+			{
+				"name": "IfHeaderCheckFl",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "CheckHeader",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\n    toUpper(activity('CheckHeader').output.value[0].HEADER_CHECK_FL),\n    'TRUE'\n)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "UpdateLogHeaderCheckFailed",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": "FAILED",
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": null,
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": {
+											"value": "@concat(\n    'The file ',\n    pipeline().parameters.ADLS_FILE_NAME_CD,\n    ' did not pass the header check (structure = ',\n    activity('GetFileHeader').output.structure,\n    ')'\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": {
+											"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": {
+											"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertLogHeaderCheckRunning').output.value[0].ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "FailCheckHeader",
+							"type": "Fail",
+							"dependsOn": [
+								{
+									"activity": "UpdateLogHeaderCheckFailed",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "Header Check failed",
+								"errorCode": "400"
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "UpdateLogHeaderCheckSucceded",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": "SUCCEEDED",
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@activity('CheckHeader').output.value[0].ELAPSED_SECONDS_NU",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": {
+											"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": {
+											"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertLogHeaderCheckRunning').output.value[0].ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "CheckHeader",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "GetFileHeader",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[CFG].[SP_ADF_CHECK_HEADER]",
+						"storedProcedureParameters": {
+							"PIPELINE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.PIPELINE_CD",
+									"type": "Expression"
+								}
+							},
+							"STRUCTURE": {
+								"type": "String",
+								"value": {
+									"value": "@string(activity('GetFileHeader').output.structure)",
+									"type": "Expression"
+								}
+							},
+							"FILE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.FILE_CD",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "InsertLogHeaderCheckRunning",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+						"storedProcedureParameters": {
+							"ACTIVITY_DE": {
+								"type": "String",
+								"value": {
+									"value": "@concat(\n    'HEADERCHECK_',\n    replace(pipeline().parameters.FILE_CD, '-', '_'),\n    '_',\n    pipeline().parameters.ADLS_FILE_NAME_CD\n)",
+									"type": "Expression"
+								}
+							},
+							"ACTIVITY_STATUS_CD": {
+								"type": "String",
+								"value": "RUNNING"
+							},
+							"EXTRACTED_FROM_TS": {
+								"type": "String",
+								"value": null
+							},
+							"EXTRACTED_TO_TS": {
+								"type": "String",
+								"value": null
+							},
+							"PIPELINE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.PIPELINE_CD",
+									"type": "Expression"
+								}
+							},
+							"ROW_NU": {
+								"type": "Int64",
+								"value": null
+							},
+							"RUN_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.RUN_CD",
+									"type": "Expression"
+								}
+							},
+							"TRIGGER_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.TRIGGER_CD",
+									"type": "Expression"
+								}
+							},
+							"ERROR_DE": {
+								"type": "String",
+								"value": null
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "UpdateLogHeaderCheckFailedGetFileHeader",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "GetFileHeader",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+					"storedProcedureParameters": {
+						"ACTIVITY_STATUS_CD": {
+							"value": "FAILED",
+							"type": "String"
+						},
+						"ELAPSED_SECONDS_NU": {
+							"value": {
+								"value": "@activity('GetFileHeader').output.executionDuration",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ERROR_DE": {
+							"value": "GetFileHeader failed",
+							"type": "String"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": {
+								"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": {
+								"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"READ_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"READ_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@activity('InsertLogHeaderCheckRunning').output.value[0].ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"WRITTEN_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"WRITTEN_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "UpdateLogHeaderCheckFailedCheckHeader",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "CheckHeader",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+					"storedProcedureParameters": {
+						"ACTIVITY_STATUS_CD": {
+							"value": "FAILED",
+							"type": "String"
+						},
+						"ELAPSED_SECONDS_NU": {
+							"value": "0",
+							"type": "String"
+						},
+						"ERROR_DE": {
+							"value": "CheckHeader failed",
+							"type": "String"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": {
+								"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": {
+								"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"READ_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"READ_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@activity('InsertLogHeaderCheckRunning').output.value[0].ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"WRITTEN_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"WRITTEN_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string"
+			},
+			"FILE_CD": {
+				"type": "string"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			},
+			"ADLS_STORAGE_ACCOUNT_CD": {
+				"type": "string"
+			},
+			"ADLS_BLOB_CONTAINER_CD": {
+				"type": "string"
+			},
+			"CURRENT_EXTRACTED_TS": {
+				"type": "string"
+			},
+			"LAST_EXTRACTED_TS": {
+				"type": "string"
+			},
+			"ADLS_FILE_PATH_CD": {
+				"type": "string"
+			},
+			"ADLS_FILE_NAME_CD": {
+				"type": "string"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-08-23T18:10:40Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

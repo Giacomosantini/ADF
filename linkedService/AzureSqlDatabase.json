@@ -1,0 +1,21 @@
+{
+	"name": "AzureSqlDatabase",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"fully_qualified_domain_name": {
+				"type": "string",
+				"defaultValue": "sql-ao-pov.database.windows.net"
+			},
+			"database_name": {
+				"type": "string",
+				"defaultValue": "sqldb-ao-pov"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().fully_qualified_domain_name};Initial Catalog=@{linkedService().database_name}"
+		}
+	}
+}

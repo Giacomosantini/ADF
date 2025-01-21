@@ -1,0 +1,420 @@
+{
+	"name": "02_RefreshPBI",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfNoQueueTableNameProvided",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(length(coalesce(pipeline().parameters.QUEUE_TABLE_NAME,'')),0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CountQueueLength",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('\nSELECT\n\t[DIM].[TRIGGER_PROCESS_FL], COUNT(*) AS COUNT_NU\nFROM\n\t[CFG].[',pipeline().parameters.QUEUE_TABLE_NAME,'] AS [QUE]\n\tINNER JOIN [DIM].[',pipeline().parameters.QUEUE_TABLE_NAME,'] AS [DIM]\n\tON [QUE].[READY_NU] = [DIM].[READY_NU]\nWHERE 1 = 1\n\tAND [QUE].[PIPELINE_CD] = ''', pipeline().parameters.PIPELINE_CD,'''\n\tAND [QUE].[OUTPUT_CATEGORY_CD] = ''', pipeline().parameters.OUTPUT_CATEGORY_CD,'''\nGROUP BY [DIM].[TRIGGER_PROCESS_FL]\nORDER BY [DIM].[TRIGGER_PROCESS_FL] ASC\n;'\n)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DS_AzureSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"fully_qualified_domain_name": {
+											"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+											"type": "Expression"
+										},
+										"database_name": {
+											"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+											"type": "Expression"
+										}
+									}
+								},
+								"firstRowOnly": false
+							}
+						},
+						{
+							"name": "SetSkipOrRunFalse",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CountQueueLength",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "skip_or_run",
+								"value": {
+									"value": "@if(\n\tor(\n\t\tgreater(length(activity('CountQueueLength').output.value), 1),\n\t\tand(equals(length(activity('CountQueueLength').output.value), 1), equals(activity('CountQueueLength').output.value[0].TRIGGER_PROCESS_FL, 0))\n\t),\n\t'SKIPPED_BUSY',\n\tif(\n\t\tand(equals(length(activity('CountQueueLength').output.value), 1), equals(activity('CountQueueLength').output.value[0].TRIGGER_PROCESS_FL, 1)),\n\t\t'PROCESS',\n\t\t'SKIPPED_EMPTYQUEUE'\n\t)\n)",
+									"type": "Expression"
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "SetSkipOrRunTrue",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "skip_or_run",
+								"value": "PROCESS"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "SkipOrRun",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "IfNoQueueTableNameProvided",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@if(\n    and(\n        and(\n            not(equals(pipeline().parameters.ACTIVE_FROM_HR, 'NULL')),\n            not(equals(pipeline().parameters.ACTIVE_TO_HR, 'NULL'))\n        ),\n        if(\n            greater(pipeline().parameters.ACTIVE_FROM_HR, pipeline().parameters.ACTIVE_TO_HR),\n            and(\n                less(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_FROM_HR\n                    )\n                ,greater(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_TO_HR\n                    )\n                ),\n            or(\n                less(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_FROM_HR\n                    )\n                ,greater(\n                    concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                    pipeline().parameters.ACTIVE_TO_HR\n                    )\n                )\n        )\n    ),\n    'SKIPPED_SLEEP',\n    variables('skip_or_run')\n)",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "SKIPPED_SLEEP",
+							"activities": [
+								{
+									"name": "ExecuteRefreshSkippedSleep",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_Copy_Skip",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"ACTIVITY_DE": {
+												"value": "@concat('REFRESH_', pipeline().parameters.OUTPUT_CATEGORY_CD)",
+												"type": "Expression"
+											},
+											"ACTIVITY_STATUS_CD": "SKIPPED_SLEEP",
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ERROR_DE": "NULL"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "SKIPPED_EMPTYQUEUE",
+							"activities": [
+								{
+									"name": "ExecuteRefreshSkippedEmptyQueue",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_Copy_Skip",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"ACTIVITY_DE": {
+												"value": "@concat('REFRESH_', pipeline().parameters.OUTPUT_CATEGORY_CD)",
+												"type": "Expression"
+											},
+											"ACTIVITY_STATUS_CD": "SKIPPED_EMPTYQUEUE",
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ERROR_DE": "NULL"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "SKIPPED_BUSY",
+							"activities": [
+								{
+									"name": "ExecuteRefreshSkippedBusy",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_Copy_Skip",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"ACTIVITY_DE": {
+												"value": "@concat('REFRESH_', pipeline().parameters.OUTPUT_CATEGORY_CD)",
+												"type": "Expression"
+											},
+											"ACTIVITY_STATUS_CD": "SKIPPED_BUSY",
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ERROR_DE": "NULL"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "PROCESS",
+							"activities": [
+								{
+									"name": "ExecuteRefreshPBIDataset",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "GetQueueRowNu",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_RefreshPBI_Dataset",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_TS": {
+												"value": "@pipeline().parameters.TRIGGER_TS",
+												"type": "Expression"
+											},
+											"OUTPUT_CATEGORY_CD": {
+												"value": "@pipeline().parameters.OUTPUT_CATEGORY_CD",
+												"type": "Expression"
+											},
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ROW_NU": {
+												"value": "@activity('GetQueueRowNu').output.value[0].ROW_NU",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "GetQueueRowNu",
+									"type": "Lookup",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "AzureSqlSource",
+											"sqlReaderQuery": {
+												"value": "@concat('\nSELECT\n\t[QUE].[ROW_NU]\nFROM\n\t[CFG].[',pipeline().parameters.QUEUE_TABLE_NAME,'] AS [QUE]\n\tINNER JOIN [DIM].[',pipeline().parameters.QUEUE_TABLE_NAME,'] AS [DIM]\n\tON [QUE].[READY_NU] = [DIM].[READY_NU]\nWHERE 1 = 1\n\tAND [QUE].[PIPELINE_CD] = ''', pipeline().parameters.PIPELINE_CD,'''\n\tAND [QUE].[OUTPUT_CATEGORY_CD] = ''', pipeline().parameters.OUTPUT_CATEGORY_CD,'''\n\tAND [DIM].[TRIGGER_PROCESS_FL] = 1\n;'\n)",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"dataset": {
+											"referenceName": "DS_AzureSqlTable",
+											"type": "DatasetReference",
+											"parameters": {
+												"fully_qualified_domain_name": {
+													"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+													"type": "Expression"
+												},
+												"database_name": {
+													"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+													"type": "Expression"
+												}
+											}
+										},
+										"firstRowOnly": false
+									}
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string",
+				"defaultValue": "INASCOLTIONLINE"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			},
+			"QUEUE_TABLE_NAME": {
+				"type": "string",
+				"defaultValue": "OUTPUT_QUEUE"
+			},
+			"OUTPUT_CATEGORY_CD": {
+				"type": "string",
+				"defaultValue": "ETL"
+			},
+			"ACTIVE_FROM_HR": {
+				"type": "string",
+				"defaultValue": "09:00"
+			},
+			"ACTIVE_TO_HR": {
+				"type": "string",
+				"defaultValue": "19:00"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string",
+				"defaultValue": "sql-ao-pov.database.windows.net"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string",
+				"defaultValue": "sqldb-ao-pov"
+			}
+		},
+		"variables": {
+			"skip_or_run": {
+				"type": "String"
+			},
+			"group_cd": {
+				"type": "String"
+			},
+			"dataset_cd": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

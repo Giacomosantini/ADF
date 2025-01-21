@@ -1,0 +1,53 @@
+{
+	"name": "DS_AzureDataLakeStorageGen2_DelimitedText",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"storage_account": {
+					"value": "@dataset().storage_account",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"storage_account": {
+				"type": "string"
+			},
+			"blob_container": {
+				"type": "string"
+			},
+			"file_path": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().file_path",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().blob_container",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}

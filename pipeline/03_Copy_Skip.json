@@ -1,0 +1,123 @@
+{
+	"name": "03_Copy_Skip",
+	"properties": {
+		"activities": [
+			{
+				"name": "InsertLogSkipped",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+					"storedProcedureParameters": {
+						"ACTIVITY_DE": {
+							"value": {
+								"value": "@pipeline().parameters.ACTIVITY_DE",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ACTIVITY_STATUS_CD": {
+							"value": {
+								"value": "@pipeline().parameters.ACTIVITY_STATUS_CD",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"PIPELINE_CD": {
+							"value": {
+								"value": "@pipeline().parameters.PIPELINE_CD",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ROW_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"RUN_CD": {
+							"value": {
+								"value": "@pipeline().parameters.RUN_CD",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"TRIGGER_CD": {
+							"value": {
+								"value": "@pipeline().parameters.TRIGGER_CD",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ERROR_DE": {
+							"value": {
+								"value": "@pipeline().parameters.ERROR_DE",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"ACTIVITY_DE": {
+				"type": "string"
+			},
+			"ACTIVITY_STATUS_CD": {
+				"type": "string"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string"
+			},
+			"ERROR_DE": {
+				"type": "string",
+				"defaultValue": "NULL"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-11-24T14:43:36Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

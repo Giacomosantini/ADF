@@ -1,0 +1,56 @@
+{
+	"name": "AzureDatabricksPool",
+	"properties": {
+		"parameters": {
+			"workspace_url": {
+				"type": "string",
+				"defaultValue": "https://adb-619784674999252.12.azuredatabricks.net"
+			},
+			"workspace_resource_id": {
+				"type": "string",
+				"defaultValue": "/subscriptions/43f4986f-bb23-4659-956b-6279fd5b81f3/resourceGroups/AO-POV/providers/Microsoft.Databricks/workspaces/adb-ao-pov"
+			},
+			"instance_pool": {
+				"type": "string",
+				"defaultValue": "0214-172931-locks56-pool-3pjjgr6v"
+			},
+			"cluster_version": {
+				"type": "string",
+				"defaultValue": "13.3.x-scala2.12"
+			},
+			"worker_nodes": {
+				"type": "string",
+				"defaultValue": "1:8"
+			},
+			"workspace_init_script_path": {
+				"type": "string",
+				"defaultValue": "/Workspace/Repos/main/AscoltiOnline-PoV-ADB/init_script/install_libraries_and_msodbcsql17.sh"
+			}
+		},
+		"annotations": [],
+		"type": "AzureDatabricks",
+		"typeProperties": {
+			"domain": "@linkedService().workspace_url",
+			"authentication": "MSI",
+			"workspaceResourceId": "@linkedService().workspace_resource_id",
+			"instancePoolId": "@linkedService().instance_pool",
+			"newClusterNumOfWorker": "@linkedService().worker_nodes",
+			"newClusterSparkEnvVars": {
+				"PYSPARK_PYTHON": "/databricks/python3/bin/python3"
+			},
+			"newClusterVersion": "@linkedService().cluster_version",
+			"newClusterLogDestination": "dbfs:/cluster-logs",
+			"newClusterInitScripts": [
+				{
+					"value": "@linkedService().workspace_init_script_path",
+					"type": "Expression"
+				}
+			],
+			"clusterOption": "Autoscaling"
+		},
+		"connectVia": {
+			"referenceName": "ClusterSvilDatalake",
+			"type": "IntegrationRuntimeReference"
+		}
+	}
+}

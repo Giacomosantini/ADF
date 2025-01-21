@@ -1,0 +1,137 @@
+name: data-factory-deploy
+
+on:
+#   push:
+#     branches:
+#     - main
+  workflow_dispatch:
+    inputs:
+      env:
+        description: 'Target ADF Environment'
+        required: true
+        type: choice
+        options:
+        - Coll
+        - Prod
+      # armTemplateParametersFile:
+      #   description: 'ARM template parameters file name'
+      #   required: false
+      #   type: string
+      #   default: 'ARMTemplateParametersForFactory.json'
+      # additionalParameters:
+      #   description: 'Parameters which will be replaced in the ARM template'
+      #   required: false
+      #   type: string
+      #   default: ''
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    
+      - uses: actions/checkout@v3
+      
+      # Installs Node and the npm packages saved in your package.json file in the build
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v3.4.1
+        with:
+          node-version: 18.x
+      
+      - name: Install ADF Utilities package
+        run: npm install
+        working-directory: ${{github.workspace}}/build  # (1) provide the folder location of the package.json file
+      
+      # Show initial treeview of build folder
+      - name: Show initial treeview of build folder
+        run: tree "${{github.workspace}}/build"
+        shell: pwsh
+      
+      # Validate all of the Data Factory resources in the repository. You'll get the same validation errors as when "Validate All" is selected.
+      - name: Validate
+        run: npm run build validate ${{github.workspace}}/ /subscriptions/43f4986f-bb23-4659-956b-6279fd5b81f3/resourceGroups/AO-POV/providers/Microsoft.DataFactory/factories/adf-ao-pov # (2) The validate command needs the root folder location of your repository where all the objects are stored. And the 2nd parameter is the resourceID of the ADF instance 
+        working-directory: ${{github.workspace}}/build
+      
+      - name: Validate and Generate ARM template
+        run: npm run build export ${{github.workspace}}/ /subscriptions/43f4986f-bb23-4659-956b-6279fd5b81f3/resourceGroups/AO-POV/providers/Microsoft.DataFactory/factories/adf-ao-pov "ARMTemplateForFactory.json"  # (3) The build command, as validate, needs the root folder location of your repository where all the objects are stored. And the 2nd parameter is the resourceID of the ADF instance. The 3rd parameter is the exported ARM template artifact name 
+        working-directory: ${{github.workspace}}/build
+      
+      # Changes Self-Hosted Integration Runtime based on `env`
+      - name: Change Self-Hosted Integration Runtime
+        run: |
+          if('${{inputs.env}}' -eq 'Coll') {
+            $jsonFiles = Get-ChildItem build/ARMTemplateForFactory.json *.json -rec
+            foreach ($file in $jsonFiles)
+            {
+                (Get-Content $file.PSPath) |
+                Foreach-Object { $_ -replace "/subscriptions/d9b28050-d5ed-43de-8fa7-67e9d8df773f/resourcegroups/Sviluppo/providers/Microsoft.DataFactory/factories/DataFactoryIngestionV2/integrationruntimes/ClusterSvilDatalake", "/subscriptions/5c85acf3-5796-4f40-b76a-73f119e1c848/resourcegroups/Collaudo/providers/Microsoft.DataFactory/factories/DataFactoryCollRaiV2/integrationruntimes/ClusterCollDatalake" } |
+                Foreach-Object { $_ -replace "ClusterSvilDatalake", "ClusterCollDatalake" } |
+                Foreach-Object { $_ -replace "akv-ao-pov", "akv-ao-pov-coll" } |
+                Foreach-Object { $_ -replace "staopovimage", "staopovcollimage" } |
+                Set-Content $file.PSPath
+            }
+          }
+          else {
+            $jsonFiles = Get-ChildItem build/ARMTemplateForFactory.json *.json -rec
+            foreach ($file in $jsonFiles)
+            {
+                (Get-Content $file.PSPath) |
+                Foreach-Object { $_ -replace "/subscriptions/d9b28050-d5ed-43de-8fa7-67e9d8df773f/resourcegroups/Sviluppo/providers/Microsoft.DataFactory/factories/DataFactoryIngestionV2/integrationruntimes/ClusterSvilDatalake", "/subscriptions/a8b8ecf4-c6fd-4f94-9b51-cd6d6ac215b6/resourcegroups/Produzione/providers/Microsoft.DataFactory/factories/DataFactoryIngestionSaraiProdV2/integrationruntimes/ClusterProdDatalake" } |
+                Foreach-Object { $_ -replace "ClusterSvilDatalake", "ClusterProdDatalake" } |
+                Foreach-Object { $_ -replace "akv-ao-pov", "akv-ao-pov-prod" } |
+                Foreach-Object { $_ -replace "staopovimage", "staopovprodimage" } |
+                Set-Content $file.PSPath
+            }
+          }
+        shell: pwsh
+      
+      # In order to leverage the artifact in another job, we need to upload it with the upload action 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ARMTemplateForFactory.json # (4) use the same artifact name you used in the previous export step
+          path: ${{github.workspace}}/build/ARMTemplateForFactory.json
+      
+      # Show final treeview of build folder
+      - name: Show final treeview of build folder
+        run: tree "${{github.workspace}}/build"
+        shell: pwsh
+      
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+
+      # Set ADF variables to be used during ADF deploy
+      - name: Set ADF variables
+        id: adf-variables
+        run: |
+          RELEASE_ENV="${{inputs.env}}"
+          echo "RESOURCE_GROUP_NAME=AO-POV-$RELEASE_ENV" >> $GITHUB_OUTPUT
+          echo "DATA_FACTORY_NAME=$(echo adf-ao-pov-$RELEASE_ENV | tr '[:upper:]' '[:lower:]')">> $GITHUB_OUTPUT
+      
+      # Download the previously uploaded artifact - so we can leverage it later in the release job     
+      - name: Download a Build Artifact
+        uses: actions/download-artifact@v3.0.2
+        with:
+          name: ARMTemplateForFactory.json # (5) Artifact name 
+      
+      - name: Login via Az module
+        uses: azure/login@hf_447_release
+        with:
+          client-id: ${{secrets.AZURE_CLIENT_ID}}
+          tenant-id: ${{secrets.AZURE_TENANT_ID}}
+          subscription-id: ${{secrets.AZURE_SUBSCRIPTION_ID}}
+          enable-AzPSSession: true
+      
+      - name: Run data-factory-deploy
+        uses: Azure/data-factory-deploy-action@v1.2.0
+        with:
+          resourceGroupName: ${{steps.adf-variables.outputs.RESOURCE_GROUP_NAME}} # (6) your target ADF resource group name
+          dataFactoryName: ${{steps.adf-variables.outputs.DATA_FACTORY_NAME}} # (7) your target ADF name
+          armTemplateFile: ARMTemplateForFactory.json # (8) ARM template file name ARMTemplateForFactory.json
+          # armTemplateParametersFile: # (9) ARM template parameters file name ARMTemplateParametersForFactory.json
+          # additionalParameters: # (10) Parameters which will be replaced in the ARM template. Expected format 'key1=value key2=value keyN=value'. At the minimum here you should provide the target ADF name parameter. Check the ARMTemplateParametersForFactory.json file for all the parameters that are expected in your scenario

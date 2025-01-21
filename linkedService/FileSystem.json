@@ -1,0 +1,51 @@
+{
+    "name": "FileSystem",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
+    "properties": {
+        "parameters": {
+            "host": {
+                "type": "string",
+                "defaultValue": "\\\\nasto4\\ASCOLTIONLINE\\"
+            },
+            "user": {
+                "type": "string",
+                "defaultValue": "rai\\srvascolti"
+            },
+            "akv_name": {
+                "type": "string",
+                "defaultValue": "akv-ao-pov"
+            },
+            "akv_secret_pwd": {
+                "type": "string",
+                "defaultValue": "var-nasto4-ao-pwd"
+            }
+        },
+        "annotations": [],
+        "type": "FileServer",
+        "typeProperties": {
+            "host": "@{linkedService().host}",
+            "userId": "@{linkedService().user}",
+            "password": {
+                "type": "AzureKeyVaultSecret",
+                "store": {
+                    "referenceName": "AzureKeyVault",
+                    "type": "LinkedServiceReference",
+                    "parameters": {
+                        "akv_name": {
+                            "value": "@linkedService().akv_name",
+                            "type": "Expression"
+                        }
+                    }
+                },
+                "secretName": {
+                    "value": "@linkedService().akv_secret_pwd",
+                    "type": "Expression"
+                }
+            }
+        },
+        "connectVia": {
+            "referenceName": "ClusterSvilDatalake",
+            "type": "IntegrationRuntimeReference"
+        }
+    }
+}

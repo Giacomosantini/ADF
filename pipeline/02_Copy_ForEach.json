@@ -1,0 +1,460 @@
+{
+	"name": "02_Copy_ForEach",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEachFileCd",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.PARAMETERS_DI",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "SwitchSkipOrRun",
+							"type": "Switch",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@if(\n    if(\n        greater(item().ACTIVE_FROM_HR, item().ACTIVE_TO_HR),\n        and(\n            less(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                item().ACTIVE_FROM_HR\n                )\n            ,greater(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                item().ACTIVE_TO_HR\n                )\n            ),\n        or(\n            less(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                item().ACTIVE_FROM_HR\n                )\n            ,greater(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                item().ACTIVE_TO_HR\n                )\n            )\n    ), \n    'SKIPPED_SLEEP', \n    if(\n        or(\n            equals(item().IS_RUNNING_FL, 1),\n            equals(toLower(string(coalesce(item().IS_RUNNING_FL, ''))), 'true')\n        ),\n\t\t'SKIPPED_BUSY',\n\t\tif(\n\t\t\tor(or(contains(toLower(coalesce(item().SOURCE_SYSTEM_CD)), 'ftp'), contains(toLower(coalesce(item().SOURCE_SYSTEM_CD)), 'filesystem')),contains(toLower(coalesce(item().SOURCE_SYSTEM_CD)), 'aws')),\n\t\t\t'COPY_FTP',\n\t\t\t'COPY'\n\t\t)\n\t)\n)",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "SKIPPED_SLEEP",
+										"activities": [
+											{
+												"name": "ExecuteCopySkippedSleep",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"policy": {
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "03_Copy_Skip",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {
+														"PIPELINE_CD": {
+															"value": "@pipeline().parameters.PIPELINE_CD",
+															"type": "Expression"
+														},
+														"RUN_CD": {
+															"value": "@pipeline().parameters.RUN_CD",
+															"type": "Expression"
+														},
+														"TRIGGER_CD": {
+															"value": "@pipeline().parameters.TRIGGER_CD",
+															"type": "Expression"
+														},
+														"ACTIVITY_DE": {
+															"value": "@concat('COPY_',item().TYPE_CD,'_From',item().SOURCE_SYSTEM_CD,'_',item().FILE_CD)",
+															"type": "Expression"
+														},
+														"ACTIVITY_STATUS_CD": "SKIPPED_SLEEP",
+														"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+															"value": "@item().ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+															"type": "Expression"
+														},
+														"ASQL_DATABASE_CD": {
+															"value": "@item().ASQL_DATABASE_CD",
+															"type": "Expression"
+														},
+														"ERROR_DE": "NULL"
+													}
+												}
+											}
+										]
+									},
+									{
+										"value": "SKIPPED_BUSY",
+										"activities": [
+											{
+												"name": "ExecuteCopySkippedBusy",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"policy": {
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "03_Copy_Skip",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {
+														"PIPELINE_CD": {
+															"value": "@pipeline().parameters.PIPELINE_CD",
+															"type": "Expression"
+														},
+														"RUN_CD": {
+															"value": "@pipeline().parameters.RUN_CD",
+															"type": "Expression"
+														},
+														"TRIGGER_CD": {
+															"value": "@pipeline().parameters.TRIGGER_CD",
+															"type": "Expression"
+														},
+														"ACTIVITY_DE": {
+															"value": "@concat('COPY_',item().TYPE_CD,'_From',item().SOURCE_SYSTEM_CD,'_',item().FILE_CD)",
+															"type": "Expression"
+														},
+														"ACTIVITY_STATUS_CD": "SKIPPED_BUSY",
+														"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+															"value": "@item().ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+															"type": "Expression"
+														},
+														"ASQL_DATABASE_CD": {
+															"value": "@item().ASQL_DATABASE_CD",
+															"type": "Expression"
+														},
+														"ERROR_DE": "NULL"
+													}
+												}
+											}
+										]
+									},
+									{
+										"value": "COPY",
+										"activities": [
+											{
+												"name": "Copy",
+												"type": "Wait",
+												"dependsOn": [],
+												"userProperties": [],
+												"typeProperties": {
+													"waitTimeInSeconds": 1
+												}
+											}
+										]
+									},
+									{
+										"value": "COPY_FTP",
+										"activities": [
+											{
+												"name": "ExecuteCopyForEachFtp",
+												"type": "ExecutePipeline",
+												"dependsOn": [],
+												"policy": {
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"pipeline": {
+														"referenceName": "02_Copy_ForEachFtp",
+														"type": "PipelineReference"
+													},
+													"waitOnCompletion": true,
+													"parameters": {
+														"RUN_CD": {
+															"value": "@pipeline().parameters.RUN_CD",
+															"type": "Expression"
+														},
+														"PIPELINE_CD": {
+															"value": "@pipeline().parameters.PIPELINE_CD",
+															"type": "Expression"
+														},
+														"TRIGGER_CD": {
+															"value": "@pipeline().parameters.TRIGGER_CD",
+															"type": "Expression"
+														},
+														"TRIGGER_TS": {
+															"value": "@pipeline().parameters.TRIGGER_TS",
+															"type": "Expression"
+														},
+														"TYPE_CD": {
+															"value": "@item().TYPE_CD",
+															"type": "Expression"
+														},
+														"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+															"value": "@item().ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+															"type": "Expression"
+														},
+														"ASQL_DATABASE_CD": {
+															"value": "@item().ASQL_DATABASE_CD",
+															"type": "Expression"
+														},
+														"ADB_WORKSPACE_URL": {
+															"value": "@item().ADB_WORKSPACE_URL",
+															"type": "Expression"
+														},
+														"ADB_WORKSPACE_RESOURCE_CD": {
+															"value": "@item().ADB_WORKSPACE_RESOURCE_CD",
+															"type": "Expression"
+														},
+														"ADB_NOTEBOOK_PATH_CD": {
+															"value": "@item().ADB_NOTEBOOK_PATH_CD",
+															"type": "Expression"
+														},
+														"ADB_EXISTING_CLUSTER_CD": {
+															"value": "@item().ADB_EXISTING_CLUSTER_CD",
+															"type": "Expression"
+														},
+														"ADB_JOB_CLUSTER_VERSION_CD": {
+															"value": "@item().ADB_JOB_CLUSTER_VERSION_CD",
+															"type": "Expression"
+														},
+														"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+															"value": "@item().ADB_JOB_CLUSTER_NODE_TYPE_CD",
+															"type": "Expression"
+														},
+														"ADB_JOB_CLUSTER_WORKERS_CD": {
+															"value": "@item().ADB_JOB_CLUSTER_WORKERS_CD",
+															"type": "Expression"
+														},
+														"FILE_CD": {
+															"value": "@item().FILE_CD",
+															"type": "Expression"
+														},
+														"LAST_EXTRACTED_TS": {
+															"value": "@item().LAST_EXTRACTED_TS",
+															"type": "Expression"
+														},
+														"EXTRACTION_TYPE_CD": {
+															"value": "@item().EXTRACTION_TYPE_CD",
+															"type": "Expression"
+														},
+														"AZURE_KEY_VAULT_NAME_CD": {
+															"value": "@item().AZURE_KEY_VAULT_NAME_CD",
+															"type": "Expression"
+														},
+														"SOURCE_SYSTEM_CD": {
+															"value": "@item().SOURCE_SYSTEM_CD",
+															"type": "Expression"
+														},
+														"SOURCE_SCHEMA_CD": {
+															"value": "@item().SOURCE_SCHEMA_CD",
+															"type": "Expression"
+														},
+														"SOURCE_TABLE_CD": {
+															"value": "@item().SOURCE_TABLE_CD",
+															"type": "Expression"
+														},
+														"FILTERING_FIELD_CD": {
+															"value": "@item().FILTERING_FIELD_CD",
+															"type": "Expression"
+														},
+														"WHERE_DE": {
+															"value": "@item().WHERE_DE",
+															"type": "Expression"
+														},
+														"QUERY_DE": {
+															"value": "@item().QUERY_DE",
+															"type": "Expression"
+														},
+														"HOST_CD": {
+															"value": "@item().HOST_CD",
+															"type": "Expression"
+														},
+														"PORT_CD": {
+															"value": "@item().PORT_CD",
+															"type": "Expression"
+														},
+														"USER_CD": {
+															"value": "@item().USER_CD",
+															"type": "Expression"
+														},
+														"SECRET_PWD_CD": {
+															"value": "@item().SECRET_PWD_CD",
+															"type": "Expression"
+														},
+														"SSH_HOST_KEY_FINGER_PRINT_CD": {
+															"value": "@item().SSH_HOST_KEY_FINGER_PRINT_CD",
+															"type": "Expression"
+														},
+														"FILE_PATH_CD": {
+															"value": "@item().FILE_PATH_CD",
+															"type": "Expression"
+														},
+														"FILE_NAME_CD": {
+															"value": "@item().FILE_NAME_CD",
+															"type": "Expression"
+														},
+														"FILE_DELIMITER_CD": {
+															"value": "@item().FILE_DELIMITER_CD",
+															"type": "Expression"
+														},
+														"FILE_EXTENSION_CD": {
+															"value": "@item().FILE_EXTENSION_CD",
+															"type": "Expression"
+														},
+														"FILE_SHEET_NAME_CD": {
+															"value": "@item().FILE_SHEET_NAME_CD",
+															"type": "Expression"
+														},
+														"FILE_RANGE_CD": {
+															"value": "@item().FILE_RANGE_CD",
+															"type": "Expression"
+														},
+														"FILE_COMPRESSION_CD": {
+															"value": "@item().FILE_COMPRESSION_CD",
+															"type": "Expression"
+														},
+														"FILE_ENCODING_CD": {
+															"value": "@item().FILE_ENCODING_CD",
+															"type": "Expression"
+														},
+														"FILE_ROW_DELIMITER_CD": {
+															"value": "@item().FILE_ROW_DELIMITER_CD",
+															"type": "Expression"
+														},
+														"FILE_QUOTE_CHARACTER_CD": {
+															"value": "@item().FILE_QUOTE_CHARACTER_CD",
+															"type": "Expression"
+														},
+														"FILE_ESCAPE_CHARACTER_CD": {
+															"value": "@item().FILE_ESCAPE_CHARACTER_CD",
+															"type": "Expression"
+														},
+														"FILE_NULL_VALUE_CD": {
+															"value": "@item().FILE_NULL_VALUE_CD",
+															"type": "Expression"
+														},
+														"FILE_FIRST_ROW_AS_HEADER_FL": {
+															"value": "@item().FILE_FIRST_ROW_AS_HEADER_FL",
+															"type": "Expression"
+														},
+														"FILE_SKIP_LINE_COUNT_NU": {
+															"value": "@item().FILE_SKIP_LINE_COUNT_NU",
+															"type": "Expression"
+														},
+														"ADLS_STORAGE_ACCOUNT_CD": {
+															"value": "@item().ADLS_STORAGE_ACCOUNT_CD",
+															"type": "Expression"
+														},
+														"ADLS_BLOB_CONTAINER_CD": {
+															"value": "@item().ADLS_BLOB_CONTAINER_CD",
+															"type": "Expression"
+														},
+														"ADLS_FILE_PATH_CD": {
+															"value": "@item().ADLS_FILE_PATH_CD",
+															"type": "Expression"
+														},
+														"ADLS_FILE_NAME_CD": {
+															"value": "@item().ADLS_FILE_NAME_CD",
+															"type": "Expression"
+														},
+														"ADB_VOLUME_CATALOG_CD": {
+															"value": "@item().ADB_VOLUME_CATALOG_CD",
+															"type": "Expression"
+														},
+														"CATALOG_CD": {
+															"value": "@item().CATALOG_CD",
+															"type": "Expression"
+														},
+														"SCHEMA_CD": {
+															"value": "@item().SCHEMA_CD",
+															"type": "Expression"
+														},
+														"TABLE_CD": {
+															"value": "@item().TABLE_CD",
+															"type": "Expression"
+														},
+														"RUN_HEADER_CHECK_FL": {
+															"value": "@item().RUN_HEADER_CHECK_FL",
+															"type": "Expression"
+														},
+														"AWS_ACCESS_KEY_CD": {
+															"value": "@item().AWS_ACCESS_KEY_CD",
+															"type": "Expression"
+														},
+														"AWS_SECRET_CD": {
+															"value": "@item().AWS_SECRET_CD",
+															"type": "Expression"
+														},
+														"AWS_BUCKET_CD": {
+															"value": "@item().AWS_BUCKET_CD",
+															"type": "Expression"
+														},
+														"AWS_REGION_CD": {
+															"value": "@item().AWS_REGION_CD",
+															"type": "Expression"
+														}
+													}
+												}
+											}
+										]
+									}
+								],
+								"defaultActivities": [
+									{
+										"name": "ExecuteCopySkippedUnknown",
+										"type": "ExecutePipeline",
+										"dependsOn": [],
+										"policy": {
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"pipeline": {
+												"referenceName": "03_Copy_Skip",
+												"type": "PipelineReference"
+											},
+											"waitOnCompletion": true,
+											"parameters": {
+												"PIPELINE_CD": {
+													"value": "@pipeline().parameters.PIPELINE_CD",
+													"type": "Expression"
+												},
+												"RUN_CD": {
+													"value": "@pipeline().parameters.RUN_CD",
+													"type": "Expression"
+												},
+												"TRIGGER_CD": {
+													"value": "@pipeline().parameters.TRIGGER_CD",
+													"type": "Expression"
+												},
+												"ACTIVITY_DE": {
+													"value": "@concat('COPY_',item().TYPE_CD,'_From',item().SOURCE_SYSTEM_CD,'_',item().FILE_CD)",
+													"type": "Expression"
+												},
+												"ACTIVITY_STATUS_CD": "SKIPPED_UNKNOWN",
+												"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+													"value": "@item().ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+													"type": "Expression"
+												},
+												"ASQL_DATABASE_CD": {
+													"value": "@item().ASQL_DATABASE_CD",
+													"type": "Expression"
+												},
+												"ERROR_DE": "NULL"
+											}
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"RUN_CD": {
+				"type": "string"
+			},
+			"PIPELINE_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"PARAMETERS_DI": {
+				"type": "array"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-11-23T17:17:17Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

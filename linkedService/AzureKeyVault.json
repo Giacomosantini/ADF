@@ -1,0 +1,17 @@
+{
+	"name": "AzureKeyVault",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"akv_name": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			}
+		},
+		"annotations": [],
+		"type": "AzureKeyVault",
+		"typeProperties": {
+			"baseUrl": "@{concat('https://', linkedService().akv_name, '.vault.azure.net')}"
+		}
+	}
+}

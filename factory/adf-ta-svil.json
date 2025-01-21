@@ -1,0 +1,21 @@
+{
+	"name": "adf-ta-svil",
+	"properties": {
+		"globalParameters": {
+			"GP_LS_AzureSqlDatabase_DatabaseName": {
+				"type": "string",
+				"value": "sqldb-ta-svil"
+			},
+			"GP_LS_AzureSqlDatabase_FullyQualifiedDomainName": {
+				"type": "string",
+				"value": "sql-ta-svil.database.windows.net"
+			}
+		}
+	},
+	"location": "northeurope",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "9d931348-df90-401d-ba8e-4c5226788953",
+		"tenantId": "3400b82a-59cb-48be-8cc7-7e7276fab72d"
+	}
+}

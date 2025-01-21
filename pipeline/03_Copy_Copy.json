@@ -1,0 +1,1994 @@
+{
+	"name": "03_Copy_Copy",
+	"properties": {
+		"activities": [
+			{
+				"name": "UpdateIngestionStart",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[CFG].[SP_ADF_PIPELINES_INGESTION_UPDATE_START]",
+					"storedProcedureParameters": {
+						"FILE_CD": {
+							"value": {
+								"value": "@pipeline().parameters.FILE_CD",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"PIPELINE_CD": {
+							"value": {
+								"value": "@pipeline().parameters.PIPELINE_CD",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "InsertLogRunning",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "UpdateIngestionStart",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+						"storedProcedureParameters": {
+							"ACTIVITY_DE": {
+								"type": "String",
+								"value": {
+									"value": "@concat('COPY_',pipeline().parameters.TYPE_CD,'_From',pipeline().parameters.SOURCE_SYSTEM_CD,'_',pipeline().parameters.FILE_CD,'_',pipeline().parameters.FILE_NAME_CD)",
+									"type": "Expression"
+								}
+							},
+							"ACTIVITY_STATUS_CD": {
+								"type": "String",
+								"value": "RUNNING"
+							},
+							"EXTRACTED_FROM_TS": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+									"type": "Expression"
+								}
+							},
+							"EXTRACTED_TO_TS": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+									"type": "Expression"
+								}
+							},
+							"PIPELINE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.PIPELINE_CD",
+									"type": "Expression"
+								}
+							},
+							"ROW_NU": {
+								"type": "Int64",
+								"value": null
+							},
+							"RUN_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.RUN_CD",
+									"type": "Expression"
+								}
+							},
+							"TRIGGER_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.TRIGGER_CD",
+									"type": "Expression"
+								}
+							},
+							"ERROR_DE": {
+								"type": "String",
+								"value": null
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": true
+				}
+			},
+			{
+				"name": "CopyFileBySourceSystemCd",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "InsertLogRunning",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "GetCopyMappingJson",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetFilePath",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "RemoveLeadingUnderscoreFromSinkFileName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetFileName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@if(\n    equals(\n        toUpper(trim(\n            pipeline().parameters.SOURCE_SYSTEM_CD\n        )),\n        'FILESYSTEM'\n    ),\n    if(\n        contains(\n            coalesce(pipeline().parameters.FILE_EXTENSION_CD,''),\n            'xlsx'\n        ),\n    'FILESYSTEM_EXCEL',\n    'FILESYSTEM_DELIMITEDTEXT'\n    ),\n    if(\n        equals(\n            toUpper(trim(\n                pipeline().parameters.SOURCE_SYSTEM_CD\n            )),\n            'AWS'\n        ),\n        if(\n            contains(\n                coalesce(pipeline().parameters.FILE_EXTENSION_CD,''),\n                'xlsx'\n            ),\n        'AWS_EXCEL',\n        'AWS_DELIMITEDTEXT'\n        ),\n        'Default'\n    )\n)",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "FILESYSTEM_DELIMITEDTEXT",
+							"activities": [
+								{
+									"name": "ExecuteCopyFileSystemDelimitedText",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "04_Copy_FileSystem_DelimitedText",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"AZURE_KEY_VAULT_NAME_CD": {
+												"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+												"type": "Expression"
+											},
+											"HOST_CD": {
+												"value": "@pipeline().parameters.HOST_CD",
+												"type": "Expression"
+											},
+											"USER_CD": {
+												"value": "@pipeline().parameters.USER_CD",
+												"type": "Expression"
+											},
+											"SECRET_PWD_CD": {
+												"value": "@pipeline().parameters.SECRET_PWD_CD",
+												"type": "Expression"
+											},
+											"SOURCE_FILE_PATH_CD": {
+												"value": "@pipeline().parameters.FILE_PATH_CD",
+												"type": "Expression"
+											},
+											"SOURCE_FILE_NAME_CD": {
+												"value": "@variables('file_name')",
+												"type": "Expression"
+											},
+											"SINK_FILE_PATH_CD": {
+												"value": "@variables('sink_file_path')",
+												"type": "Expression"
+											},
+											"SINK_FILE_NAME_CD": {
+												"value": "@variables('sink_file_name')",
+												"type": "Expression"
+											},
+											"FILE_DELIMITER_CD": {
+												"value": "@pipeline().parameters.FILE_DELIMITER_CD",
+												"type": "Expression"
+											},
+											"FILE_EXTENSION_CD": {
+												"value": "@pipeline().parameters.FILE_EXTENSION_CD",
+												"type": "Expression"
+											},
+											"FILE_COMPRESSION_CD": {
+												"value": "@pipeline().parameters.FILE_COMPRESSION_CD",
+												"type": "Expression"
+											},
+											"FILE_ENCODING_CD": {
+												"value": "@pipeline().parameters.FILE_ENCODING_CD",
+												"type": "Expression"
+											},
+											"FILE_ROW_DELIMITER_CD": {
+												"value": "@pipeline().parameters.FILE_ROW_DELIMITER_CD",
+												"type": "Expression"
+											},
+											"FILE_QUOTE_CHARACTER_CD": {
+												"value": "@pipeline().parameters.FILE_QUOTE_CHARACTER_CD",
+												"type": "Expression"
+											},
+											"FILE_ESCAPE_CHARACTER_CD": {
+												"value": "@pipeline().parameters.FILE_ESCAPE_CHARACTER_CD",
+												"type": "Expression"
+											},
+											"FILE_NULL_VALUE_CD": {
+												"value": "@pipeline().parameters.FILE_NULL_VALUE_CD",
+												"type": "Expression"
+											},
+											"FILE_FIRST_ROW_AS_HEADER_FL": {
+												"value": "@pipeline().parameters.FILE_FIRST_ROW_AS_HEADER_FL",
+												"type": "Expression"
+											},
+											"FILE_SKIP_LINE_COUNT_NU": {
+												"value": "@pipeline().parameters.FILE_SKIP_LINE_COUNT_NU",
+												"type": "Expression"
+											},
+											"ADLS_STORAGE_ACCOUNT_CD": {
+												"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+												"type": "Expression"
+											},
+											"ADLS_BLOB_CONTAINER_CD": {
+												"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+												"type": "Expression"
+											},
+											"COPY_MAPPING_JSON": {
+												"value": "@json(activity('GetCopyMappingJson').output.value[0].JSON_MAPPING)",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SetErrorFileSystemDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "error",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemDelimitedText').output.pipelineReturnValue.error",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetStatusFileSystemDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "status",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemDelimitedText').output.pipelineReturnValue.status",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetCopyDurationFileSystemDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "copy_duration",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemDelimitedText').output.pipelineReturnValue.copy_duration",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetDataReadFileSystemDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "data_read",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemDelimitedText').output.pipelineReturnValue.data_read",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetRowsReadFileSystemDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "rows_read",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemDelimitedText').output.pipelineReturnValue.rows_read",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetDataWrittenFileSystemDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "data_written",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemDelimitedText').output.pipelineReturnValue.data_written",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetRowsCopiedFileSystemDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "rows_copied",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemDelimitedText').output.pipelineReturnValue.rows_copied",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "FILESYSTEM_EXCEL",
+							"activities": [
+								{
+									"name": "ExecuteCopyFileSystemExcel",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "04_Copy_FileSystem_Excel",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"AZURE_KEY_VAULT_NAME_CD": {
+												"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+												"type": "Expression"
+											},
+											"HOST_CD": {
+												"value": "@pipeline().parameters.HOST_CD",
+												"type": "Expression"
+											},
+											"USER_CD": {
+												"value": "@pipeline().parameters.USER_CD",
+												"type": "Expression"
+											},
+											"SECRET_PWD_CD": {
+												"value": "@pipeline().parameters.SECRET_PWD_CD",
+												"type": "Expression"
+											},
+											"SOURCE_FILE_PATH_CD": {
+												"value": "@pipeline().parameters.FILE_PATH_CD",
+												"type": "Expression"
+											},
+											"SOURCE_FILE_NAME_CD": {
+												"value": "@variables('file_name')",
+												"type": "Expression"
+											},
+											"SINK_FILE_PATH_CD": {
+												"value": "@variables('sink_file_path')",
+												"type": "Expression"
+											},
+											"SINK_FILE_NAME_CD": {
+												"value": "@variables('sink_file_name')",
+												"type": "Expression"
+											},
+											"FILE_EXTENSION_CD": {
+												"value": "@pipeline().parameters.FILE_EXTENSION_CD",
+												"type": "Expression"
+											},
+											"FILE_SHEET_NAME_CD": {
+												"value": "@pipeline().parameters.FILE_SHEET_NAME_CD",
+												"type": "Expression"
+											},
+											"FILE_RANGE_CD": {
+												"value": "@pipeline().parameters.FILE_RANGE_CD",
+												"type": "Expression"
+											},
+											"FILE_COMPRESSION_CD": {
+												"value": "@pipeline().parameters.FILE_COMPRESSION_CD",
+												"type": "Expression"
+											},
+											"FILE_NULL_VALUE_CD": {
+												"value": "@pipeline().parameters.FILE_NULL_VALUE_CD",
+												"type": "Expression"
+											},
+											"FILE_FIRST_ROW_AS_HEADER_FL": {
+												"value": "@pipeline().parameters.FILE_FIRST_ROW_AS_HEADER_FL",
+												"type": "Expression"
+											},
+											"ADLS_STORAGE_ACCOUNT_CD": {
+												"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+												"type": "Expression"
+											},
+											"ADLS_BLOB_CONTAINER_CD": {
+												"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+												"type": "Expression"
+											},
+											"COPY_MAPPING_JSON": {
+												"value": "@json(activity('GetCopyMappingJson').output.value[0].JSON_MAPPING)",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SetErrorFileSystemExcel",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemExcel",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "error",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemExcel').output.pipelineReturnValue.error",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetStatusFileSystemExcel",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemExcel",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "status",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemExcel').output.pipelineReturnValue.status",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetCopyDurationFileSystemExcel",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemExcel",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "copy_duration",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemExcel').output.pipelineReturnValue.copy_duration",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetDataReadFileSystemExcel",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemExcel",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "data_read",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemExcel').output.pipelineReturnValue.data_read",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetRowsReadFileSystemExcel",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemExcel",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "rows_read",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemExcel').output.pipelineReturnValue.rows_read",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetDataWrittenFileSystemExcel",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemExcel",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "data_written",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemExcel').output.pipelineReturnValue.data_written",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetRowsCopiedFileSystemExcel",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyFileSystemExcel",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "rows_copied",
+										"value": {
+											"value": "@activity('ExecuteCopyFileSystemExcel').output.pipelineReturnValue.rows_copied",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "AWS_DELIMITEDTEXT",
+							"activities": [
+								{
+									"name": "ExecuteCopyAwsDelimitedText",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "04_Copy_AWS_DelimitedText",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"AZURE_KEY_VAULT_NAME_CD": {
+												"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+												"type": "Expression"
+											},
+											"HOST_CD": {
+												"value": "@pipeline().parameters.HOST_CD",
+												"type": "Expression"
+											},
+											"USER_CD": {
+												"value": "@pipeline().parameters.USER_CD",
+												"type": "Expression"
+											},
+											"SECRET_PWD_CD": {
+												"value": "@pipeline().parameters.SECRET_PWD_CD",
+												"type": "Expression"
+											},
+											"SOURCE_FILE_PATH_CD": {
+												"value": "@pipeline().parameters.FILE_PATH_CD",
+												"type": "Expression"
+											},
+											"SOURCE_FILE_NAME_CD": {
+												"value": "@variables('file_name')",
+												"type": "Expression"
+											},
+											"SINK_FILE_PATH_CD": {
+												"value": "@variables('sink_file_path')",
+												"type": "Expression"
+											},
+											"SINK_FILE_NAME_CD": {
+												"value": "@variables('sink_file_name')",
+												"type": "Expression"
+											},
+											"FILE_DELIMITER_CD": {
+												"value": "@pipeline().parameters.FILE_DELIMITER_CD",
+												"type": "Expression"
+											},
+											"FILE_EXTENSION_CD": {
+												"value": "@pipeline().parameters.FILE_EXTENSION_CD",
+												"type": "Expression"
+											},
+											"FILE_COMPRESSION_CD": {
+												"value": "@pipeline().parameters.FILE_COMPRESSION_CD",
+												"type": "Expression"
+											},
+											"FILE_ENCODING_CD": {
+												"value": "@pipeline().parameters.FILE_ENCODING_CD",
+												"type": "Expression"
+											},
+											"FILE_ROW_DELIMITER_CD": {
+												"value": "@pipeline().parameters.FILE_ROW_DELIMITER_CD",
+												"type": "Expression"
+											},
+											"FILE_QUOTE_CHARACTER_CD": {
+												"value": "@pipeline().parameters.FILE_QUOTE_CHARACTER_CD",
+												"type": "Expression"
+											},
+											"FILE_ESCAPE_CHARACTER_CD": {
+												"value": "@pipeline().parameters.FILE_ESCAPE_CHARACTER_CD",
+												"type": "Expression"
+											},
+											"FILE_NULL_VALUE_CD": {
+												"value": "@pipeline().parameters.FILE_NULL_VALUE_CD",
+												"type": "Expression"
+											},
+											"FILE_FIRST_ROW_AS_HEADER_FL": {
+												"value": "@pipeline().parameters.FILE_FIRST_ROW_AS_HEADER_FL",
+												"type": "Expression"
+											},
+											"FILE_SKIP_LINE_COUNT_NU": {
+												"value": "@pipeline().parameters.FILE_SKIP_LINE_COUNT_NU",
+												"type": "Expression"
+											},
+											"ADLS_STORAGE_ACCOUNT_CD": {
+												"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+												"type": "Expression"
+											},
+											"ADLS_BLOB_CONTAINER_CD": {
+												"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+												"type": "Expression"
+											},
+											"COPY_MAPPING_JSON": {
+												"value": "@json(activity('GetCopyMappingJson').output.value[0].JSON_MAPPING)",
+												"type": "Expression"
+											},
+											"AWS_ACCESS_KEY_CD": {
+												"value": "@pipeline().parameters.AWS_ACCESS_KEY_CD",
+												"type": "Expression"
+											},
+											"AWS_SECRET_CD": {
+												"value": "@pipeline().parameters.AWS_SECRET_CD",
+												"type": "Expression"
+											},
+											"AWS_BUCKET_CD": {
+												"value": "@pipeline().parameters.AWS_BUCKET_CD",
+												"type": "Expression"
+											},
+											"AWS_REGION_CD": {
+												"value": "@pipeline().parameters.AWS_REGION_CD",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SetErrorAwsDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyAwsDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "error",
+										"value": {
+											"value": "@activity('ExecuteCopyAwsDelimitedText').output.pipelineReturnValue.error",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetStatusAwsDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyAwsDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "status",
+										"value": {
+											"value": "@activity('ExecuteCopyAwsDelimitedText').output.pipelineReturnValue.status",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetCopyDurationAwsDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyAwsDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "copy_duration",
+										"value": {
+											"value": "@activity('ExecuteCopyAwsDelimitedText').output.pipelineReturnValue.copy_duration",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetDataReadAwsDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyAwsDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "data_read",
+										"value": {
+											"value": "@activity('ExecuteCopyAwsDelimitedText').output.pipelineReturnValue.data_read",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetRowsReadAwsDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyAwsDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "rows_read",
+										"value": {
+											"value": "@activity('ExecuteCopyAwsDelimitedText').output.pipelineReturnValue.rows_read",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetDataWrittenAwsDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyAwsDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "data_written",
+										"value": {
+											"value": "@activity('ExecuteCopyAwsDelimitedText').output.pipelineReturnValue.data_written",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetRowsCopiedAwsDelimitedText",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyAwsDelimitedText",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "rows_copied",
+										"value": {
+											"value": "@activity('ExecuteCopyAwsDelimitedText').output.pipelineReturnValue.rows_copied",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "IfCopyFailed",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "IfRunCheckHeader",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(\n    and(\n        equals(toUpper(variables('status')),'FAILED'),\n        not(equals(variables('error'), ''))\n    ),\n    equals(variables('rows_copied'), 0)\n)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "UpdateLogSucceeded",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": {
+											"value": "@variables('status')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@int(variables('copy_duration'))",
+											"type": "Expression"
+										},
+										"type": "Int32"
+									},
+									"ERROR_DE": {
+										"value": null,
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": {
+											"value": "@int(variables('data_read'))",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": {
+											"value": "@int(variables('rows_read'))",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertLogRunning').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": {
+											"value": "@int(variables('data_written'))",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": {
+											"value": "@int(variables('rows_copied'))",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": {
+											"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": {
+											"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "UpdateIngestionEndSucceeded",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[CFG].[SP_ADF_PIPELINES_INGESTION_UPDATE_END]",
+								"storedProcedureParameters": {
+									"LAST_EXTRACTED_TS": {
+										"value": {
+											"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PIPELINE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.PIPELINE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"FILE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.FILE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "InsertAdbQueue",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "UpdateIngestionEndSucceeded",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[CFG].[SP_ADB_QUEUE_INSERT]",
+								"storedProcedureParameters": {
+									"ADF_LOG_ROW_NU": {
+										"value": {
+											"value": "@activity('InsertLogRunning').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"TYPE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.TYPE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PIPELINE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.PIPELINE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"CATALOG_CD": {
+										"value": {
+											"value": "@pipeline().parameters.CATALOG_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"SCHEMA_CD": {
+										"value": {
+											"value": "@pipeline().parameters.SCHEMA_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"TABLE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.TABLE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"TRIGGER_TS": {
+										"value": {
+											"value": "@pipeline().parameters.TRIGGER_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PREVIOUS_LAST_EXTRACTED_TS": {
+										"value": {
+											"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"CURRENT_LAST_EXTRACTED_TS": {
+										"value": {
+											"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"FILE_PATH_CD": {
+										"value": {
+											"value": "@concat('/Volumes/', pipeline().parameters.ADB_VOLUME_CATALOG_CD, '/', variables('sink_file_path'))",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"FILE_NAME_CD": {
+										"value": {
+											"value": "@variables('sink_file_name')",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "UpdateLogFailed",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": {
+											"value": "@variables('status')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@variables('copy_duration')",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": {
+											"value": "@if(\n    equals(variables('rows_copied'), 0),\n    'The copied file has 0 rows!',    \n    variables('error')\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertLogRunning').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": {
+											"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": {
+											"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "UpdateIngestionEndFailed",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[CFG].[SP_ADF_PIPELINES_INGESTION_UPDATE_END]",
+								"storedProcedureParameters": {
+									"LAST_EXTRACTED_TS": {
+										"value": {
+											"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"PIPELINE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.PIPELINE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"FILE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.FILE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "GetCopyMappingJson",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[CFG].[SP_ADF_GET_COLUMN_MAPPING]",
+						"storedProcedureParameters": {
+							"FILE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.FILE_CD",
+									"type": "Expression"
+								}
+							},
+							"PIPELINE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.PIPELINE_CD",
+									"type": "Expression"
+								}
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "SetFilePath",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "sink_file_path",
+					"value": {
+						"value": "@concat(pipeline().parameters.ADLS_FILE_PATH_CD, '/', formatDateTime(pipeline().parameters.CURRENT_EXTRACTED_TS, 'yyyy'), '/', formatDateTime(pipeline().parameters.CURRENT_EXTRACTED_TS, 'MM'), '/',  formatDateTime(pipeline().parameters.CURRENT_EXTRACTED_TS, 'dd'))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetFileName",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "file_name",
+					"value": {
+						"value": "@if(\n    equals(length(trim(coalesce(pipeline().parameters.FILE_EXTENSION_CD, ''))), 0),\n    pipeline().parameters.FILE_NAME_CD,\n    replace(pipeline().parameters.FILE_NAME_CD, pipeline().parameters.FILE_EXTENSION_CD, '')\n)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "IfRunCheckHeader",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "CopyFileBySourceSystemCd",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@and(\n    not(or(\n        and(\n            equals(toUpper(variables('status')),'FAILED'),\n            not(equals(variables('error'), ''))\n        ),\n        equals(variables('rows_copied'), 0)\n    )),\nequals(pipeline().parameters.RUN_HEADER_CHECK_FL, 1))",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "ExecuteCheckHeader",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "04_CheckHeader",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"PIPELINE_CD": {
+										"value": "@pipeline().parameters.PIPELINE_CD",
+										"type": "Expression"
+									},
+									"FILE_CD": {
+										"value": "@pipeline().parameters.FILE_CD",
+										"type": "Expression"
+									},
+									"RUN_CD": {
+										"value": "@pipeline().parameters.RUN_CD",
+										"type": "Expression"
+									},
+									"TRIGGER_CD": {
+										"value": "@pipeline().parameters.TRIGGER_CD",
+										"type": "Expression"
+									},
+									"TRIGGER_TS": {
+										"value": "@pipeline().parameters.TRIGGER_TS",
+										"type": "Expression"
+									},
+									"ADLS_STORAGE_ACCOUNT_CD": {
+										"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+										"type": "Expression"
+									},
+									"ADLS_BLOB_CONTAINER_CD": {
+										"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+										"type": "Expression"
+									},
+									"CURRENT_EXTRACTED_TS": {
+										"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+										"type": "Expression"
+									},
+									"LAST_EXTRACTED_TS": {
+										"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+										"type": "Expression"
+									},
+									"ADLS_FILE_PATH_CD": {
+										"value": "@variables('sink_file_path')",
+										"type": "Expression"
+									},
+									"ADLS_FILE_NAME_CD": {
+										"value": "@variables('sink_file_name')",
+										"type": "Expression"
+									},
+									"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"ASQL_DATABASE_CD": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "SetSinkFileName",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "sink_file_name_",
+					"value": {
+						"value": "@if(\n    greater(length(trim(coalesce(pipeline().parameters.ADLS_FILE_NAME_CD, ''))), 0),\n    pipeline().parameters.ADLS_FILE_NAME_CD,\n    if(\n        equals(length(trim(coalesce(pipeline().parameters.FILE_EXTENSION_CD, ''))), 0),\n        pipeline().parameters.FILE_NAME_CD,\n        replace(pipeline().parameters.FILE_NAME_CD, pipeline().parameters.FILE_EXTENSION_CD, '')\n    )\n)",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "UpdateLogCopyUpdateOrInsertFailed",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "IfCopyFailed",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+					"storedProcedureParameters": {
+						"ACTIVITY_STATUS_CD": {
+							"value": {
+								"value": "@variables('status')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ELAPSED_SECONDS_NU": {
+							"value": {
+								"value": "@variables('copy_duration')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ERROR_DE": {
+							"value": {
+								"value": "@if(\n    equals(variables('rows_copied'), 0),\n    'The copied file has 0 rows!',    \n    variables('error')\n)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"READ_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"READ_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@activity('InsertLogRunning').output.firstRow.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"WRITTEN_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"WRITTEN_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": {
+								"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": {
+								"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+								"type": "Expression"
+							},
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "RemoveLeadingUnderscoreFromSinkFileName",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "SetSinkFileName",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "sink_file_name",
+					"value": {
+						"value": "@if(\n    startswith(variables('sink_file_name_'), '_'),\n    substring(variables('sink_file_name_'), 1, add(length(variables('sink_file_name_')), -1)),\n    variables('sink_file_name_')\n)",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"RUN_CD": {
+				"type": "string"
+			},
+			"PIPELINE_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			},
+			"TYPE_CD": {
+				"type": "string"
+			},
+			"FILE_CD": {
+				"type": "string"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_URL": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_RESOURCE_CD": {
+				"type": "string"
+			},
+			"ADB_NOTEBOOK_PATH_CD": {
+				"type": "string"
+			},
+			"ADB_EXISTING_CLUSTER_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_VERSION_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_WORKERS_CD": {
+				"type": "string"
+			},
+			"LAST_EXTRACTED_TS": {
+				"type": "string",
+				"defaultValue": "2022-11-21 09:00:00.0"
+			},
+			"CURRENT_EXTRACTED_TS": {
+				"type": "string"
+			},
+			"EXTRACTION_TYPE_CD": {
+				"type": "string"
+			},
+			"AZURE_KEY_VAULT_NAME_CD": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"SOURCE_SYSTEM_CD": {
+				"type": "string",
+				"defaultValue": "FILESYSTEM"
+			},
+			"SOURCE_SCHEMA_CD": {
+				"type": "string"
+			},
+			"SOURCE_TABLE_CD": {
+				"type": "string"
+			},
+			"FILTERING_FIELD_CD": {
+				"type": "string"
+			},
+			"WHERE_DE": {
+				"type": "string"
+			},
+			"QUERY_DE": {
+				"type": "string"
+			},
+			"HOST_CD": {
+				"type": "string",
+				"defaultValue": "\\\\nasto4\\ASCOLTIONLINE\\"
+			},
+			"PORT_CD": {
+				"type": "string"
+			},
+			"USER_CD": {
+				"type": "string",
+				"defaultValue": "rai\\srvascolti"
+			},
+			"SECRET_PWD_CD": {
+				"type": "string",
+				"defaultValue": "var-nasto4-ao-pwd"
+			},
+			"SSH_HOST_KEY_FINGER_PRINT_CD": {
+				"type": "string"
+			},
+			"FILE_PATH_CD": {
+				"type": "string",
+				"defaultValue": "FullDayByViewing"
+			},
+			"FILE_NAME_CD": {
+				"type": "string",
+				"defaultValue": "FullDay"
+			},
+			"FILE_DELIMITER_CD": {
+				"type": "string"
+			},
+			"FILE_EXTENSION_CD": {
+				"type": "string"
+			},
+			"FILE_SHEET_NAME_CD": {
+				"type": "string"
+			},
+			"FILE_RANGE_CD": {
+				"type": "string"
+			},
+			"FILE_COMPRESSION_CD": {
+				"type": "string"
+			},
+			"FILE_ENCODING_CD": {
+				"type": "string"
+			},
+			"FILE_ROW_DELIMITER_CD": {
+				"type": "string"
+			},
+			"FILE_QUOTE_CHARACTER_CD": {
+				"type": "string"
+			},
+			"FILE_ESCAPE_CHARACTER_CD": {
+				"type": "string"
+			},
+			"FILE_NULL_VALUE_CD": {
+				"type": "string"
+			},
+			"FILE_FIRST_ROW_AS_HEADER_FL": {
+				"type": "string"
+			},
+			"FILE_SKIP_LINE_COUNT_NU": {
+				"type": "string"
+			},
+			"ADLS_STORAGE_ACCOUNT_CD": {
+				"type": "string"
+			},
+			"ADLS_BLOB_CONTAINER_CD": {
+				"type": "string"
+			},
+			"ADLS_FILE_PATH_CD": {
+				"type": "string"
+			},
+			"ADLS_FILE_NAME_CD": {
+				"type": "string"
+			},
+			"ADB_VOLUME_CATALOG_CD": {
+				"type": "string"
+			},
+			"CATALOG_CD": {
+				"type": "string"
+			},
+			"SCHEMA_CD": {
+				"type": "string"
+			},
+			"TABLE_CD": {
+				"type": "string"
+			},
+			"RUN_HEADER_CHECK_FL": {
+				"type": "string"
+			},
+			"AWS_ACCESS_KEY_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-access-key-id"
+			},
+			"AWS_SECRET_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-secret-access-key"
+			},
+			"AWS_BUCKET_CD": {
+				"type": "string",
+				"defaultValue": "total-audience"
+			},
+			"AWS_REGION_CD": {
+				"type": "string",
+				"defaultValue": "eu-south-1"
+			}
+		},
+		"variables": {
+			"status": {
+				"type": "String"
+			},
+			"copy_duration": {
+				"type": "String"
+			},
+			"data_read": {
+				"type": "String"
+			},
+			"rows_read": {
+				"type": "String"
+			},
+			"data_written": {
+				"type": "String"
+			},
+			"rows_copied": {
+				"type": "String"
+			},
+			"error": {
+				"type": "String"
+			},
+			"file_name": {
+				"type": "String"
+			},
+			"sink_file_path": {
+				"type": "String"
+			},
+			"sink_file_name_": {
+				"type": "String"
+			},
+			"sink_file_name": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-11-23T17:23:29Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

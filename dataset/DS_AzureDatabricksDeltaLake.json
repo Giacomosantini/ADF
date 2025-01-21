@@ -1,0 +1,41 @@
+{
+    "name": "DS_AzureDatabricksDeltaLake",
+    "properties": {
+        "linkedServiceName": {
+            "referenceName": "AzureDatabricksDeltaLake",
+            "type": "LinkedServiceReference",
+            "parameters": {
+                "workspace_url": {
+                    "value": "@dataset().workspace_url",
+                    "type": "Expression"
+                },
+                "workspace_resource_id": {
+                    "value": "@dataset().workspace_resource_id",
+                    "type": "Expression"
+                },
+                "existing_cluster_id": {
+                    "value": "@dataset().existing_cluster_id",
+                    "type": "Expression"
+                }
+            }
+        },
+        "parameters": {
+            "workspace_url": {
+                "type": "string",
+                "defaultValue": "https://adb-619784674999252.12.azuredatabricks.net"
+            },
+            "workspace_resource_id": {
+                "type": "string",
+                "defaultValue": "/subscriptions/43f4986f-bb23-4659-956b-6279fd5b81f3/resourceGroups/AO-POV/providers/Microsoft.Databricks/workspaces/adb-ao-pov"
+            },
+            "existing_cluster_id": {
+                "type": "string",
+                "defaultValue": "1115-142708-k0glzsns"
+            }
+        },
+        "annotations": [],
+        "type": "AzureDatabricksDeltaLakeDataset",
+        "schema": []
+    },
+    "type": "Microsoft.DataFactory/factories/datasets"
+}

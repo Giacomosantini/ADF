@@ -1,0 +1,74 @@
+{
+	"name": "DS_AmazonS3_DelimitedText_Validate",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AmazonS3",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"region": {
+					"value": "@dataset().region",
+					"type": "Expression"
+				},
+				"akv_name": {
+					"value": "@dataset().akv_name",
+					"type": "Expression"
+				},
+				"access_key_id_secret_name": {
+					"value": "@dataset().access_key_id_secret_name",
+					"type": "Expression"
+				},
+				"secret_access_key_secret_name": {
+					"value": "@dataset().secret_access_key_secret_name",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"bucket": {
+				"type": "string",
+				"defaultValue": "total-audience"
+			},
+			"region": {
+				"type": "string",
+				"defaultValue": "eu-south-1"
+			},
+			"akv_name": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"access_key_id_secret_name": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-access-key-id"
+			},
+			"secret_access_key_secret_name": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-secret-access-key"
+			},
+			"file_path": {
+				"type": "string",
+				"defaultValue": "digital/ed_live"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AmazonS3Location",
+				"bucketName": {
+					"value": "@dataset().bucket",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().file_path",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": "\t",
+			"rowDelimiter": "\n",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}

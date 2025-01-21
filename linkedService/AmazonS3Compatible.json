@@ -1,0 +1,44 @@
+{
+	"name": "AmazonS3Compatible",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"access_key": {
+				"type": "string",
+				"defaultValue": "AKIA2MVEXA7H7DFFNNWR"
+			},
+			"akv_name": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"secret_access_key": {
+				"type": "string",
+				"defaultValue": "var-s3-access-key-total-audience"
+			}
+		},
+		"annotations": [],
+		"type": "AmazonS3Compatible",
+		"typeProperties": {
+			"serviceUrl": "https://total-audience.s3.eu-south-1.amazonaws.com",
+			"accessKeyId": "@{linkedService().access_key}",
+			"secretAccessKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "AzureKeyVault",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"akv_name": {
+							"value": "@linkedService().akv_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"secretName": {
+					"value": "@linkedService().secret_access_key",
+					"type": "Expression"
+				}
+			},
+			"forcePathStyle": true
+		}
+	}
+}

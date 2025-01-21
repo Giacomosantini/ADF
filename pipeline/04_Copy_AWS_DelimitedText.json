@@ -1,0 +1,859 @@
+{
+	"name": "04_Copy_AWS_DelimitedText",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfCompressionExists",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@or(\n    not(equals(coalesce(pipeline().parameters.FILE_COMPRESSION_CD, ''),'')),\n    not(equals(coalesce(pipeline().parameters.FILE_COMPRESSION_CD, 'null'),'null'))\n)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CopyAWSWithoutCompression",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AmazonS3ReadSettings",
+										"recursive": false,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings",
+										"skipLineCount": {
+											"value": "@int(coalesce(pipeline().parameters.FILE_SKIP_LINE_COUNT_NU, '0'))",
+											"type": "Expression"
+										}
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"value": "@pipeline().parameters.COPY_MAPPING_JSON",
+									"type": "Expression"
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_AmazonS3_DelimitedText_WithoutCompression",
+									"type": "DatasetReference",
+									"parameters": {
+										"bucket": {
+											"value": "@pipeline().parameters.AWS_BUCKET_CD",
+											"type": "Expression"
+										},
+										"region": {
+											"value": "@pipeline().parameters.AWS_REGION_CD",
+											"type": "Expression"
+										},
+										"akv_name": {
+											"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+											"type": "Expression"
+										},
+										"access_key_id_secret_name": {
+											"value": "@pipeline().parameters.AWS_ACCESS_KEY_CD",
+											"type": "Expression"
+										},
+										"secret_access_key_secret_name": {
+											"value": "@pipeline().parameters.AWS_SECRET_CD",
+											"type": "Expression"
+										},
+										"file_path": {
+											"value": "@pipeline().parameters.SOURCE_FILE_PATH_CD",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@pipeline().parameters.SOURCE_FILE_NAME_CD",
+											"type": "Expression"
+										},
+										"file_delimiter": {
+											"value": "@pipeline().parameters.FILE_DELIMITER_CD",
+											"type": "Expression"
+										},
+										"file_extension": {
+											"value": "@pipeline().parameters.FILE_EXTENSION_CD",
+											"type": "Expression"
+										},
+										"file_encoding": {
+											"value": "@pipeline().parameters.FILE_ENCODING_CD",
+											"type": "Expression"
+										},
+										"file_row_delimiter": {
+											"value": "@pipeline().parameters.FILE_ROW_DELIMITER_CD",
+											"type": "Expression"
+										},
+										"quote_character": {
+											"value": "@pipeline().parameters.FILE_QUOTE_CHARACTER_CD",
+											"type": "Expression"
+										},
+										"escape_character": {
+											"value": "@pipeline().parameters.FILE_ESCAPE_CHARACTER_CD",
+											"type": "Expression"
+										},
+										"first_row_as_header": {
+											"value": "@pipeline().parameters.FILE_FIRST_ROW_AS_HEADER_FL",
+											"type": "Expression"
+										},
+										"null_value": {
+											"value": "@pipeline().parameters.FILE_NULL_VALUE_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_AzureDataLakeStorageGen2_Parquet",
+									"type": "DatasetReference",
+									"parameters": {
+										"storage_acount": {
+											"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+											"type": "Expression"
+										},
+										"blob_container": {
+											"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+											"type": "Expression"
+										},
+										"file_path": {
+											"value": "@pipeline().parameters.SINK_FILE_PATH_CD",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@pipeline().parameters.SINK_FILE_NAME_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "SetErrorWithoutCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithoutCompression",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "error",
+								"value": {
+									"value": "@concat(\n    string(activity('CopyAWSWithoutCompression').Error.errorCode),\n    ': ',\n    string(activity('CopyAWSWithoutCompression').Error.message)\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetRowsCopiedWithoutCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithoutCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "rows_copied",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithoutCompression').output, 'rowsCopied'),\n    string(activity('CopyAWSWithoutCompression').output.rowsCopied),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetDataWrittenWithoutCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithoutCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "data_written",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithoutCompression').output, 'dataWritten'),\n    string(activity('CopyAWSWithoutCompression').output.dataWritten),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetRowsReadWithoutCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithoutCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "rows_read",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithoutCompression').output, 'rowsRead'),\n    string(activity('CopyAWSWithoutCompression').output.rowsRead),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetDataReadWithoutCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithoutCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "data_read",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithoutCompression').output, 'dataRead'),\n    string(activity('CopyAWSWithoutCompression').output.dataRead),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetCopyDurationWithoutCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithoutCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "copy_duration",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithoutCompression').output, 'copyDuration'),\n    string(activity('CopyAWSWithoutCompression').output.copyDuration),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetStatusWithoutCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithoutCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "status",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithoutCompression').output, 'executionDetails'),\n    string(toUpper(activity('CopyAWSWithoutCompression').output.executionDetails[0].status)),\n    'FAILED'\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Wait1FailedWithoutCompression",
+							"type": "Wait",
+							"dependsOn": [
+								{
+									"activity": "SetErrorWithoutCompression",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "CopyAWSWithCompression",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AmazonS3ReadSettings",
+										"recursive": false,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings",
+										"skipLineCount": {
+											"value": "@int(coalesce(pipeline().parameters.FILE_SKIP_LINE_COUNT_NU, '0'))",
+											"type": "Expression"
+										}
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"value": "@pipeline().parameters.COPY_MAPPING_JSON",
+									"type": "Expression"
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_AmazonS3_DelimitedText_WithCompression",
+									"type": "DatasetReference",
+									"parameters": {
+										"bucket": {
+											"value": "@pipeline().parameters.AWS_BUCKET_CD",
+											"type": "Expression"
+										},
+										"region": {
+											"value": "@pipeline().parameters.AWS_REGION_CD",
+											"type": "Expression"
+										},
+										"akv_name": {
+											"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+											"type": "Expression"
+										},
+										"access_key_id_secret_name": {
+											"value": "@pipeline().parameters.AWS_ACCESS_KEY_CD",
+											"type": "Expression"
+										},
+										"secret_access_key_secret_name": {
+											"value": "@pipeline().parameters.AWS_SECRET_CD",
+											"type": "Expression"
+										},
+										"file_path": {
+											"value": "@pipeline().parameters.SOURCE_FILE_PATH_CD",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@pipeline().parameters.SOURCE_FILE_NAME_CD",
+											"type": "Expression"
+										},
+										"file_delimiter": {
+											"value": "@pipeline().parameters.FILE_DELIMITER_CD",
+											"type": "Expression"
+										},
+										"file_extension": {
+											"value": "@pipeline().parameters.FILE_EXTENSION_CD",
+											"type": "Expression"
+										},
+										"file_compression": {
+											"value": "@pipeline().parameters.FILE_COMPRESSION_CD",
+											"type": "Expression"
+										},
+										"file_encoding": {
+											"value": "@pipeline().parameters.FILE_ENCODING_CD",
+											"type": "Expression"
+										},
+										"file_row_delimiter": {
+											"value": "@pipeline().parameters.FILE_ROW_DELIMITER_CD",
+											"type": "Expression"
+										},
+										"quote_character": {
+											"value": "@pipeline().parameters.FILE_QUOTE_CHARACTER_CD",
+											"type": "Expression"
+										},
+										"escape_character": {
+											"value": "@pipeline().parameters.FILE_ESCAPE_CHARACTER_CD",
+											"type": "Expression"
+										},
+										"first_row_as_header": {
+											"value": "@pipeline().parameters.FILE_FIRST_ROW_AS_HEADER_FL",
+											"type": "Expression"
+										},
+										"null_value": {
+											"value": "@pipeline().parameters.FILE_NULL_VALUE_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_AzureDataLakeStorageGen2_Parquet",
+									"type": "DatasetReference",
+									"parameters": {
+										"storage_acount": {
+											"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+											"type": "Expression"
+										},
+										"blob_container": {
+											"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+											"type": "Expression"
+										},
+										"file_path": {
+											"value": "@pipeline().parameters.SINK_FILE_PATH_CD",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@pipeline().parameters.SINK_FILE_NAME_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "SetErrorWithCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithCompression",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "error",
+								"value": {
+									"value": "@concat(\n    string(activity('CopyAWSWithCompression').Error.errorCode),\n    ': ',\n    string(activity('CopyAWSWithCompression').Error.message)\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetRowsCopiedWithCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "rows_copied",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithCompression').output, 'rowsCopied'),\n    string(activity('CopyAWSWithCompression').output.rowsCopied),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetDataWrittenWithCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "data_written",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithCompression').output, 'dataWritten'),\n    string(activity('CopyAWSWithCompression').output.dataWritten),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetRowsReadWithCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "rows_read",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithCompression').output, 'rowsRead'),\n    string(activity('CopyAWSWithCompression').output.rowsRead),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetDataReadWithCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "data_read",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithCompression').output, 'dataRead'),\n    string(activity('CopyAWSWithCompression').output.dataRead),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetCopyDurationWithCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "copy_duration",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithCompression').output, 'copyDuration'),\n    string(activity('CopyAWSWithCompression').output.copyDuration),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetStatusWithCompression",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "CopyAWSWithCompression",
+									"dependencyConditions": [
+										"Completed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "status",
+								"value": {
+									"value": "@if(\n    contains(activity('CopyAWSWithCompression').output, 'executionDetails'),\n    string(toUpper(activity('CopyAWSWithCompression').output.executionDetails[0].status)),\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "Wait1FailedWithCompression",
+							"type": "Wait",
+							"dependsOn": [
+								{
+									"activity": "SetErrorWithCompression",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "SetPipelineReturnValue",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "IfCompressionExists",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "pipelineReturnValue",
+					"value": [
+						{
+							"key": "status",
+							"value": {
+								"type": "Expression",
+								"content": "@toUpper(variables('status'))"
+							}
+						},
+						{
+							"key": "copy_duration",
+							"value": {
+								"type": "Expression",
+								"content": "@variables('copy_duration')"
+							}
+						},
+						{
+							"key": "data_read",
+							"value": {
+								"type": "Expression",
+								"content": "@variables('data_read')"
+							}
+						},
+						{
+							"key": "rows_read",
+							"value": {
+								"type": "Expression",
+								"content": "@variables('rows_read')"
+							}
+						},
+						{
+							"key": "data_written",
+							"value": {
+								"type": "Expression",
+								"content": "@variables('data_written')"
+							}
+						},
+						{
+							"key": "rows_copied",
+							"value": {
+								"type": "Expression",
+								"content": "@variables('rows_copied')"
+							}
+						},
+						{
+							"key": "error",
+							"value": {
+								"type": "Expression",
+								"content": "@variables('error')"
+							}
+						}
+					],
+					"setSystemVariable": true
+				}
+			}
+		],
+		"parameters": {
+			"AZURE_KEY_VAULT_NAME_CD": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"HOST_CD": {
+				"type": "string",
+				"defaultValue": "\\\\nasto4\\ASCOLTIONLINE\\"
+			},
+			"USER_CD": {
+				"type": "string",
+				"defaultValue": "rai\\srvascolti"
+			},
+			"SECRET_PWD_CD": {
+				"type": "string",
+				"defaultValue": "var-nasto4-ao-pwd"
+			},
+			"SOURCE_FILE_PATH_CD": {
+				"type": "string",
+				"defaultValue": "FullDayByViewing"
+			},
+			"SOURCE_FILE_NAME_CD": {
+				"type": "string"
+			},
+			"SINK_FILE_PATH_CD": {
+				"type": "string",
+				"defaultValue": "FullDay"
+			},
+			"SINK_FILE_NAME_CD": {
+				"type": "string",
+				"defaultValue": "FullDay"
+			},
+			"FILE_DELIMITER_CD": {
+				"type": "string"
+			},
+			"FILE_EXTENSION_CD": {
+				"type": "string"
+			},
+			"FILE_COMPRESSION_CD": {
+				"type": "string"
+			},
+			"FILE_ENCODING_CD": {
+				"type": "string"
+			},
+			"FILE_ROW_DELIMITER_CD": {
+				"type": "string"
+			},
+			"FILE_QUOTE_CHARACTER_CD": {
+				"type": "string"
+			},
+			"FILE_ESCAPE_CHARACTER_CD": {
+				"type": "string"
+			},
+			"FILE_NULL_VALUE_CD": {
+				"type": "string"
+			},
+			"FILE_FIRST_ROW_AS_HEADER_FL": {
+				"type": "string"
+			},
+			"FILE_SKIP_LINE_COUNT_NU": {
+				"type": "string"
+			},
+			"ADLS_STORAGE_ACCOUNT_CD": {
+				"type": "string"
+			},
+			"ADLS_BLOB_CONTAINER_CD": {
+				"type": "string"
+			},
+			"COPY_MAPPING_JSON": {
+				"type": "string"
+			},
+			"AWS_ACCESS_KEY_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-access-key-id"
+			},
+			"AWS_SECRET_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-secret-access-key"
+			},
+			"AWS_BUCKET_CD": {
+				"type": "string",
+				"defaultValue": "total-audience"
+			},
+			"AWS_REGION_CD": {
+				"type": "string",
+				"defaultValue": "eu-south-1"
+			}
+		},
+		"variables": {
+			"status": {
+				"type": "String"
+			},
+			"copy_duration": {
+				"type": "String"
+			},
+			"data_read": {
+				"type": "String"
+			},
+			"rows_read": {
+				"type": "String"
+			},
+			"data_written": {
+				"type": "String"
+			},
+			"rows_copied": {
+				"type": "String"
+			},
+			"error": {
+				"type": "String"
+			},
+			"file_name": {
+				"type": "String"
+			},
+			"file_path": {
+				"type": "String"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2024-04-03T15:14:23Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

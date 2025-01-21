@@ -1,0 +1,67 @@
+{
+	"name": "99_MoveLastExtractedTsBack",
+	"properties": {
+		"activities": [
+			{
+				"name": "SetLastExtractedTs",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[CFG].[SP_SET_LAST_EXTRACTED_TS]",
+					"storedProcedureParameters": {
+						"PIPELINE_CD": {
+							"value": {
+								"value": "@pipeline().parameters.PIPELINE_CD",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"DAY_NU": {
+							"value": {
+								"value": "@pipeline().parameters.DAY_NU",
+								"type": "Expression"
+							},
+							"type": "Int32"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().globalParameters.GP_LS_AzureSqlDatabase_FullyQualifiedDomainName",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().globalParameters.GP_LS_AzureSqlDatabase_DatabaseName",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string",
+				"defaultValue": "INASCOLTIONLINE"
+			},
+			"DAY_NU": {
+				"type": "string",
+				"defaultValue": "-7"
+			}
+		},
+		"folder": {
+			"name": "Utils"
+		},
+		"annotations": []
+	}
+}

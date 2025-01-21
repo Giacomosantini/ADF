@@ -1,0 +1,187 @@
+{
+	"name": "02_Copy_ForEachFtp_GetFilesAWS",
+	"properties": {
+		"activities": [
+			{
+				"name": "ValidationAWS",
+				"type": "Validation",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DS_AmazonS3_DelimitedText_Validate",
+						"type": "DatasetReference",
+						"parameters": {
+							"bucket": {
+								"value": "@pipeline().parameters.AWS_BUCKET_CD",
+								"type": "Expression"
+							},
+							"region": {
+								"value": "@pipeline().parameters.AWS_REGION_CD",
+								"type": "Expression"
+							},
+							"akv_name": {
+								"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+								"type": "Expression"
+							},
+							"access_key_id_secret_name": {
+								"value": "@pipeline().parameters.AWS_ACCESS_KEY_CD",
+								"type": "Expression"
+							},
+							"secret_access_key_secret_name": {
+								"value": "@pipeline().parameters.AWS_SECRET_CD",
+								"type": "Expression"
+							},
+							"file_path": {
+								"value": "@pipeline().parameters.FILE_PATH_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"timeout": "0.00:01:00",
+					"sleep": 10
+				}
+			},
+			{
+				"name": "GetLastModified",
+				"type": "GetMetadata",
+				"dependsOn": [
+					{
+						"activity": "ValidationAWS",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DS_AmazonS3_DelimitedText_Validate",
+						"type": "DatasetReference",
+						"parameters": {
+							"bucket": {
+								"value": "@pipeline().parameters.AWS_BUCKET_CD",
+								"type": "Expression"
+							},
+							"region": {
+								"value": "@pipeline().parameters.AWS_REGION_CD",
+								"type": "Expression"
+							},
+							"akv_name": {
+								"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+								"type": "Expression"
+							},
+							"access_key_id_secret_name": {
+								"value": "@pipeline().parameters.AWS_ACCESS_KEY_CD",
+								"type": "Expression"
+							},
+							"secret_access_key_secret_name": {
+								"value": "@pipeline().parameters.AWS_SECRET_CD",
+								"type": "Expression"
+							},
+							"file_path": {
+								"value": "@pipeline().parameters.FILE_PATH_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"fieldList": [
+						"exists",
+						"lastModified",
+						"childItems",
+						"itemName"
+					],
+					"storeSettings": {
+						"type": "AmazonS3ReadSettings",
+						"recursive": true,
+						"modifiedDatetimeStart": {
+							"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+							"type": "Expression"
+						},
+						"modifiedDatetimeEnd": {
+							"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+							"type": "Expression"
+						},
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			},
+			{
+				"name": "SetPipelineReturnValue",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetLastModified",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "pipelineReturnValue",
+					"value": [
+						{
+							"key": "child_items",
+							"value": {
+								"type": "Expression",
+								"content": "@activity('GetLastModified').output.childItems"
+							}
+						}
+					],
+					"setSystemVariable": true
+				}
+			}
+		],
+		"parameters": {
+			"LAST_EXTRACTED_TS": {
+				"type": "string",
+				"defaultValue": "2022-11-21 09:00:00.0"
+			},
+			"CURRENT_EXTRACTED_TS": {
+				"type": "string"
+			},
+			"AWS_ACCESS_KEY_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-access-key-id"
+			},
+			"AWS_SECRET_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-secret-access-key"
+			},
+			"AWS_BUCKET_CD": {
+				"type": "string",
+				"defaultValue": "total-audience"
+			},
+			"AWS_REGION_CD": {
+				"type": "string",
+				"defaultValue": "eu-south-1"
+			},
+			"AZURE_KEY_VAULT_NAME_CD": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"FILE_PATH_CD": {
+				"type": "string",
+				"defaultValue": "digital/ed_live"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-11-22T17:42:52Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

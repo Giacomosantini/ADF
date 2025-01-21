@@ -1,0 +1,562 @@
+{
+	"name": "01_CopyAndProcess",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetParameters",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@concat('SELECT\n\t [PIPELINE_CD]\n\t,[TYPE_CD]\n\t,[ACTIVE_FROM_HR]\n\t,[ACTIVE_TO_HR]\n\t,[ASQL_FULLY_QUALIFIED_DOMAIN_CD]\n\t,[ASQL_DATABASE_CD]\n\t,[ADB_WORKSPACE_URL]\n\t,[ADB_WORKSPACE_RESOURCE_CD]\n\t,[ADB_WORKSPACE_INIT_SCRIPT_PATH_CD]\n\t,[ADB_NOTEBOOK_PATH_CD]\n\t,[ADB_EXISTING_CLUSTER_CD]\n\t,[ADB_INSTANCE_POOL_CD]\n\t,[ADB_JOB_CLUSTER_VERSION_CD]\n\t,[ADB_JOB_CLUSTER_NODE_TYPE_CD]\n\t,[ADB_JOB_CLUSTER_WORKERS_CD]\n\t,[FILE_CD]\n\t,[LAST_EXTRACTED_TS]\n\t,[EXTRACTION_TYPE_CD]\n\t,[AZURE_KEY_VAULT_NAME_CD]\n\t,[SOURCE_SYSTEM_CD]\n\t,[SOURCE_SCHEMA_CD]\n\t,[SOURCE_TABLE_CD]\n\t,[FILTERING_FIELD_CD]\n\t,[WHERE_DE]\n\t,[QUERY_DE]\n\t,[HOST_CD]\n\t,[PORT_CD]\n\t,[USER_CD]\n\t,[SECRET_PWD_CD]\n\t,[SSH_HOST_KEY_FINGER_PRINT_CD]\n\t,[AWS_ACCESS_KEY_CD]\n\t,[AWS_SECRET_CD]\n\t,[AWS_BUCKET_CD]\n\t,[AWS_REGION_CD]\n\t,[FILE_PATH_CD]\n\t,[FILE_NAME_CD]\n\t,[FILE_SHEET_NAME_CD]\n\t,[FILE_RANGE_CD]\n\t,[FILE_DELIMITER_CD]\n\t,[FILE_EXTENSION_CD]\n\t,[FILE_COMPRESSION_CD]\n\t,[FILE_ENCODING_CD]\n\t,[FILE_ROW_DELIMITER_CD]\n\t,[FILE_QUOTE_CHARACTER_CD]\n\t,[FILE_ESCAPE_CHARACTER_CD]\n\t,[FILE_NULL_VALUE_CD]\n\t,[FILE_FIRST_ROW_AS_HEADER_FL]\n\t,[FILE_SKIP_LINE_COUNT_NU]\n\t,[ADLS_STORAGE_ACCOUNT_CD]\n\t,[ADLS_BLOB_CONTAINER_CD]\n\t,[ADLS_FILE_PATH_CD]\n\t,[ADLS_FILE_NAME_CD]\n\t,[ADB_VOLUME_CATALOG_CD]\n\t,[CATALOG_CD]\n\t,[SCHEMA_CD]\n\t,[TABLE_CD]\n\t,[IS_RUNNING_FL]\n\t,[RUN_HEADER_CHECK_FL]\nFROM\n\t[CFG].[VW_ADF_PIPELINES_INGESTION]\nWHERE\n\t[PIPELINE_CD] = ''', pipeline().parameters.PIPELINE_CD, '''\n;')",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().globalParameters.GP_LS_AzureSqlDatabase_FullyQualifiedDomainName",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().globalParameters.GP_LS_AzureSqlDatabase_DatabaseName",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "SwitchTypeCd",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "GetParameters",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@if(\n    greater(length(activity('GetParameters').output.value),0),\n    activity('GetParameters').output.value[0].TYPE_CD,\n    'Default'\n)",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "NAS",
+							"activities": [
+								{
+									"name": "ExecuteCopyNAS",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "FilterNAS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "02_Copy_ForEach",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"RUN_CD": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											},
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@concat(pipeline().TriggerType, ': ', pipeline().TriggerName)",
+												"type": "Expression"
+											},
+											"PARAMETERS_DI": {
+												"value": "@activity('FilterNAS').output.value",
+												"type": "Expression"
+											},
+											"TRIGGER_TS": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "FilterNAS",
+									"type": "Filter",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"items": {
+											"value": "@activity('GetParameters').output.value",
+											"type": "Expression"
+										},
+										"condition": {
+											"value": "@equals(item().PIPELINE_CD, pipeline().parameters.PIPELINE_CD)",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "ExecuteProcessNAS",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "ExecuteCopyNAS",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "02_Process",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@concat(pipeline().TriggerType, ': ', pipeline().TriggerName)",
+												"type": "Expression"
+											},
+											"TRIGGER_TS": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											},
+											"QUEUE_TABLE_NAME": "ADB_QUEUE",
+											"OUTPUT_CATEGORY_CD": "ETL",
+											"ACTIVE_FROM_HR": {
+												"value": "@activity('GetParameters').output.value[0].ACTIVE_FROM_HR",
+												"type": "Expression"
+											},
+											"ACTIVE_TO_HR": {
+												"value": "@activity('GetParameters').output.value[0].ACTIVE_TO_HR",
+												"type": "Expression"
+											},
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@activity('GetParameters').output.value[0].ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@activity('GetParameters').output.value[0].ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_URL": {
+												"value": "@activity('GetParameters').output.value[0].ADB_WORKSPACE_URL",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_RESOURCE_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_WORKSPACE_RESOURCE_CD",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_INIT_SCRIPT_PATH_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_WORKSPACE_INIT_SCRIPT_PATH_CD",
+												"type": "Expression"
+											},
+											"ADB_NOTEBOOK_PATH_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_NOTEBOOK_PATH_CD",
+												"type": "Expression"
+											},
+											"ADB_EXISTING_CLUSTER_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_EXISTING_CLUSTER_CD",
+												"type": "Expression"
+											},
+											"ADB_INSTANCE_POOL_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_INSTANCE_POOL_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_VERSION_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_JOB_CLUSTER_VERSION_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_JOB_CLUSTER_NODE_TYPE_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_WORKERS_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_JOB_CLUSTER_WORKERS_CD",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "ExecuteRefreshPBINAS",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "ExecuteProcessNAS",
+											"dependencyConditions": [
+												"Completed"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "02_RefreshPBI",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@concat(pipeline().TriggerType, ': ', pipeline().TriggerName)",
+												"type": "Expression"
+											},
+											"TRIGGER_TS": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											},
+											"QUEUE_TABLE_NAME": "OUTPUT_QUEUE",
+											"OUTPUT_CATEGORY_CD": "ETL",
+											"ACTIVE_FROM_HR": {
+												"value": "@activity('GetParameters').output.value[0].ACTIVE_FROM_HR",
+												"type": "Expression"
+											},
+											"ACTIVE_TO_HR": {
+												"value": "@activity('GetParameters').output.value[0].ACTIVE_TO_HR",
+												"type": "Expression"
+											},
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@activity('GetParameters').output.value[0].ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@activity('GetParameters').output.value[0].ASQL_DATABASE_CD",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "ERR",
+							"activities": [
+								{
+									"name": "ExecuteErrorCheck",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "FilterERR",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "99_ErrorCheck",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@activity('FilterERR').output.value[0].ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@activity('FilterERR').output.value[0].ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@concat(pipeline().TriggerType, ': ', pipeline().TriggerName)",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											},
+											"ACTIVE_FROM_HR": {
+												"value": "@activity('FilterERR').output.value[0].ACTIVE_FROM_HR",
+												"type": "Expression"
+											},
+											"ACTIVE_TO_HR": {
+												"value": "@activity('FilterERR').output.value[0].ACTIVE_TO_HR",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "FilterERR",
+									"type": "Filter",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"items": {
+											"value": "@activity('GetParameters').output.value",
+											"type": "Expression"
+										},
+										"condition": {
+											"value": "@equals(item().PIPELINE_CD, pipeline().parameters.PIPELINE_CD)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "MTN",
+							"activities": [
+								{
+									"name": "FilterMTN",
+									"type": "Filter",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"items": {
+											"value": "@activity('GetParameters').output.value",
+											"type": "Expression"
+										},
+										"condition": {
+											"value": "@equals(item().PIPELINE_CD, pipeline().parameters.PIPELINE_CD)",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "ExecuteProcessMTN",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "FilterMTN",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "02_Process",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@concat(pipeline().TriggerType, ': ', pipeline().TriggerName)",
+												"type": "Expression"
+											},
+											"TRIGGER_TS": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											},
+											"OUTPUT_CATEGORY_CD": "MAINTENANCE",
+											"ACTIVE_FROM_HR": {
+												"value": "@activity('GetParameters').output.value[0].ACTIVE_FROM_HR",
+												"type": "Expression"
+											},
+											"ACTIVE_TO_HR": {
+												"value": "@activity('GetParameters').output.value[0].ACTIVE_TO_HR",
+												"type": "Expression"
+											},
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@activity('GetParameters').output.value[0].ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@activity('GetParameters').output.value[0].ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_URL": {
+												"value": "@activity('GetParameters').output.value[0].ADB_WORKSPACE_URL",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_RESOURCE_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_WORKSPACE_RESOURCE_CD",
+												"type": "Expression"
+											},
+											"ADB_WORKSPACE_INIT_SCRIPT_PATH_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_WORKSPACE_INIT_SCRIPT_PATH_CD",
+												"type": "Expression"
+											},
+											"ADB_NOTEBOOK_PATH_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_NOTEBOOK_PATH_CD",
+												"type": "Expression"
+											},
+											"ADB_EXISTING_CLUSTER_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_EXISTING_CLUSTER_CD",
+												"type": "Expression"
+											},
+											"ADB_INSTANCE_POOL_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_INSTANCE_POOL_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_VERSION_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_JOB_CLUSTER_VERSION_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_JOB_CLUSTER_NODE_TYPE_CD",
+												"type": "Expression"
+											},
+											"ADB_JOB_CLUSTER_WORKERS_CD": {
+												"value": "@activity('GetParameters').output.value[0].ADB_JOB_CLUSTER_WORKERS_CD",
+												"type": "Expression"
+											}
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "AWS",
+							"activities": [
+								{
+									"name": "ExecuteCopyAWS",
+									"type": "ExecutePipeline",
+									"dependsOn": [
+										{
+											"activity": "FilterAWS",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "02_Copy_ForEach",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"RUN_CD": {
+												"value": "@pipeline().RunId",
+												"type": "Expression"
+											},
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@concat(pipeline().TriggerType, ': ', pipeline().TriggerName)",
+												"type": "Expression"
+											},
+											"PARAMETERS_DI": {
+												"value": "@activity('FilterAWS').output.value",
+												"type": "Expression"
+											},
+											"TRIGGER_TS": {
+												"value": "@pipeline().TriggerTime",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "FilterAWS",
+									"type": "Filter",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"items": {
+											"value": "@activity('GetParameters').output.value",
+											"type": "Expression"
+										},
+										"condition": {
+											"value": "@equals(item().PIPELINE_CD, pipeline().parameters.PIPELINE_CD)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					],
+					"defaultActivities": [
+						{
+							"name": "Wait1",
+							"type": "Wait",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"waitTimeInSeconds": 1
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string",
+				"defaultValue": "INASCOLTIONLINE"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-11-21T16:12:47Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

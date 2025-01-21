@@ -1,0 +1,28 @@
+{
+	"name": "adf-ao-pov",
+	"properties": {
+		"globalParameters": {
+			"GP_LS_AzureDatabricksDeltaLake_WorkspaceUrl": {
+				"type": "string",
+				"value": "https://adb-619784674999252.12.azuredatabricks.net"
+			},
+			"GP_LS_AzureDatabricksDeltaLake_WorkspaceResourceId": {
+				"type": "string",
+				"value": "/subscriptions/43f4986f-bb23-4659-956b-6279fd5b81f3/resourceGroups/AO-POV/providers/Microsoft.Databricks/workspaces/adb-ao-pov"
+			},
+			"GP_LS_AzureDatabricksDeltaLake_ExistingClusterId": {
+				"type": "string",
+				"value": "1115-142708-k0glzsns"
+			},
+			"GP_LS_AzureSqlDatabase_FullyQualifiedDomainName": {
+				"type": "string",
+				"value": "sql-ao-pov.database.windows.net"
+			},
+			"GP_LS_AzureSqlDatabase_DatabaseName": {
+				"type": "string",
+				"value": "sqldb-ao-pov"
+			}
+		}
+	},
+	"location": "northeurope"
+}

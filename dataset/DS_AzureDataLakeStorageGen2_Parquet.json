@@ -1,0 +1,51 @@
+{
+	"name": "DS_AzureDataLakeStorageGen2_Parquet",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeStorage",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"storage_account": {
+					"value": "@dataset().storage_acount",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"storage_acount": {
+				"type": "string"
+			},
+			"blob_container": {
+				"type": "string"
+			},
+			"file_path": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().file_path",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().blob_container",
+					"type": "Expression"
+				}
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

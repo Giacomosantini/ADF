@@ -1,0 +1,160 @@
+{
+	"name": "99_CopyCovers",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEachCover",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "FilterJpgFiles",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('FilterJpgFiles').output.Value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "CopyCover",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "BinarySource",
+									"storeSettings": {
+										"type": "FileServerReadSettings",
+										"recursive": true,
+										"deleteFilesAfterCompletion": false
+									},
+									"formatSettings": {
+										"type": "BinaryReadSettings"
+									}
+								},
+								"sink": {
+									"type": "BinarySink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_FileSystem_Binary",
+									"type": "DatasetReference",
+									"parameters": {
+										"host": "\\\\nasto4\\ASCOLTIONLINE\\",
+										"user": "rai\\srvascolti",
+										"akv_name": "akv-ao-pov",
+										"akv_secret_pwd": "var-nasto4-ao-pwd",
+										"file_path": "FileVari\\LOCANDINE",
+										"file_name": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_AzureDataLakeStorageGen2_Binary",
+									"type": "DatasetReference",
+									"parameters": {
+										"storage_account": "staopovimage",
+										"blob_container": "copertina",
+										"file_path": "/",
+										"file_name": {
+											"value": "@item().name",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "GetCoversList",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DS_FileSystem_Binary_Validate",
+						"type": "DatasetReference",
+						"parameters": {
+							"host": "\\\\nasto4\\ASCOLTIONLINE\\",
+							"user": "rai\\srvascolti",
+							"akv_name": "akv-ao-pov",
+							"akv_secret_pwd": "var-nasto4-ao-pwd",
+							"file_path": "FileVari\\LOCANDINE"
+						}
+					},
+					"fieldList": [
+						"exists",
+						"lastModified",
+						"childItems",
+						"itemName"
+					],
+					"storeSettings": {
+						"type": "FileServerReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "BinaryReadSettings"
+					}
+				}
+			},
+			{
+				"name": "FilterJpgFiles",
+				"type": "Filter",
+				"dependsOn": [
+					{
+						"activity": "GetCoversList",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('GetCoversList').output.childItems",
+						"type": "Expression"
+					},
+					"condition": {
+						"value": "@and(\n    equals(item().type, 'File'),\n    endswith(toLower(item().name), '.jpg')\n)",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"folder": {
+			"name": "Utils"
+		},
+		"annotations": []
+	}
+}

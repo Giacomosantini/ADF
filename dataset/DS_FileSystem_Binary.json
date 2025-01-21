@@ -1,0 +1,67 @@
+{
+	"name": "DS_FileSystem_Binary",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "FileSystem",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"host": {
+					"value": "@dataset().host",
+					"type": "Expression"
+				},
+				"user": {
+					"value": "@dataset().user",
+					"type": "Expression"
+				},
+				"akv_name": {
+					"value": "@dataset().akv_name",
+					"type": "Expression"
+				},
+				"akv_secret_pwd": {
+					"value": "@dataset().akv_secret_pwd",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"host": {
+				"type": "string",
+				"defaultValue": "\\\\nasto4\\ASCOLTIONLINE\\"
+			},
+			"user": {
+				"type": "string",
+				"defaultValue": "rai\\srvascolti"
+			},
+			"akv_name": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"akv_secret_pwd": {
+				"type": "string",
+				"defaultValue": "var-nasto4-ao-pwd"
+			},
+			"file_path": {
+				"type": "string",
+				"defaultValue": "FileVari/LOCANDINE"
+			},
+			"file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "FileServerLocation",
+				"fileName": {
+					"value": "@dataset().file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().file_path",
+					"type": "Expression"
+				}
+			}
+		}
+	}
+}

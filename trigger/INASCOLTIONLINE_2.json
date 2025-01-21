@@ -1,0 +1,44 @@
+{
+	"name": "INASCOLTIONLINE_2",
+	"properties": {
+		"annotations": [
+			"Ascolti Online"
+		],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "01_CopyAndProcess",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"PIPELINE_CD": "INASCOLTIONLINE"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Week",
+				"interval": 1,
+				"startTime": "2024-02-14T08:00:00",
+				"timeZone": "W. Europe Standard Time",
+				"schedule": {
+					"minutes": [
+						45
+					],
+					"hours": [
+						10
+					],
+					"weekDays": [
+						"Monday",
+						"Tuesday",
+						"Wednesday",
+						"Thursday",
+						"Friday"
+					]
+				}
+			}
+		}
+	}
+}

@@ -1,0 +1,98 @@
+{
+	"name": "DS_FileSystem_Excel_WithoutCompression",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "FileSystem",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"host": {
+					"value": "@dataset().host",
+					"type": "Expression"
+				},
+				"user": {
+					"value": "@dataset().user",
+					"type": "Expression"
+				},
+				"akv_name": {
+					"value": "@dataset().akv_name",
+					"type": "Expression"
+				},
+				"akv_secret_pwd": {
+					"value": "@dataset().akv_secret_pwd",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"host": {
+				"type": "string",
+				"defaultValue": "\\\\nasto4\\ASCOLTIONLINE\\"
+			},
+			"user": {
+				"type": "string",
+				"defaultValue": "rai\\srvascolti"
+			},
+			"akv_name": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"akv_secret_pwd": {
+				"type": "string",
+				"defaultValue": "var-nasto4-ao-pwd"
+			},
+			"file_path": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			},
+			"file_extension": {
+				"type": "string"
+			},
+			"file_sheet_name": {
+				"type": "string"
+			},
+			"file_range": {
+				"type": "string"
+			},
+			"first_row_as_header": {
+				"type": "string"
+			},
+			"null_value": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "Excel",
+		"typeProperties": {
+			"sheetName": {
+				"value": "@dataset().file_sheet_name",
+				"type": "Expression"
+			},
+			"location": {
+				"type": "FileServerLocation",
+				"fileName": {
+					"value": "@if(\n    equals(length(trim(coalesce(dataset().file_extension, ''))),0),\n    dataset().file_name,\n    concat(dataset().file_name,dataset().file_extension)\n)",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().file_path",
+					"type": "Expression"
+				}
+			},
+			"range": {
+				"value": "@dataset().file_range",
+				"type": "Expression"
+			},
+			"firstRowAsHeader": {
+				"value": "@bool(dataset().first_row_as_header)",
+				"type": "Expression"
+			},
+			"nullValue": {
+				"value": "@dataset().null_value",
+				"type": "Expression"
+			}
+		},
+		"schema": []
+	}
+}

@@ -1,0 +1,12 @@
+{
+	"name": "ClusterSvilDatalake",
+	"properties": {
+		"type": "SelfHosted",
+		"typeProperties": {
+			"linkedInfo": {
+				"resourceId": "/subscriptions/d9b28050-d5ed-43de-8fa7-67e9d8df773f/resourcegroups/Sviluppo/providers/Microsoft.DataFactory/factories/DataFactoryIngestionV2/integrationruntimes/ClusterSvilDatalake",
+				"authorizationType": "Rbac"
+			}
+		}
+	}
+}

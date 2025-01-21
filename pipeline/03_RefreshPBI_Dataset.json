@@ -1,0 +1,596 @@
+{
+	"name": "03_RefreshPBI_Dataset",
+	"properties": {
+		"activities": [
+			{
+				"name": "GetParametersDatasets",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@concat('SELECT\n\t [GROUP_CD]\n\t,[DATASET_CD]\n\t,[AZURE_TENANT_CD]\n\t,[AZURE_KEY_VAULT_NAME_CD]\n\t,[SERVICE_PRINCIPAL_APP_CD]\n\t,[SECRET_PWD_CD]\nFROM\n\t[CFG].[PBI_DATASETS]\nWHERE 1 = 1\n\tAND [ACTIVE_FL] = 1\n\tAND [PIPELINE_CD] = ''', pipeline().parameters.PIPELINE_CD, '''\n;')",
+							"type": "Expression"
+						},
+						"queryTimeout": "00:02:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "ForEachDataset",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "GetParametersDatasets",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "UpdateOutputQueueRunning",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('GetParametersDatasets').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "InsertLogRefreshRunning",
+							"type": "Lookup",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderStoredProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+									"storedProcedureParameters": {
+										"ACTIVITY_DE": {
+											"type": "String",
+											"value": {
+												"value": "@concat(\n\t'REFRESH_',\n\tpipeline().parameters.OUTPUT_CATEGORY_CD,\n    '_',\n    item().GROUP_CD,\n    '_',\n    item().DATASET_CD\n)",
+												"type": "Expression"
+											}
+										},
+										"ACTIVITY_STATUS_CD": {
+											"type": "String",
+											"value": "RUNNING"
+										},
+										"EXTRACTED_FROM_TS": {
+											"type": "String",
+											"value": null
+										},
+										"EXTRACTED_TO_TS": {
+											"type": "String",
+											"value": null
+										},
+										"PIPELINE_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											}
+										},
+										"ROW_NU": {
+											"type": "Int64",
+											"value": null
+										},
+										"RUN_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											}
+										},
+										"TRIGGER_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											}
+										},
+										"ERROR_DE": {
+											"type": "String",
+											"value": null
+										}
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DS_AzureSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"fully_qualified_domain_name": {
+											"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+											"type": "Expression"
+										},
+										"database_name": {
+											"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						},
+						{
+							"name": "UpdateLogRefreshSucceeded",
+							"type": "SqlServerStoredProcedure",
+							"state": "Active",
+							"onInactiveMarkAs": "Succeeded",
+							"dependsOn": [
+								{
+									"activity": "RefreshDataset",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": {
+											"value": "@if(\n    equals(toLower(activity('RefreshDataset').output.status), 'completed'),\n    'SUCCEEDED',\n    'FAILED'\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@activity('RefreshDataset').output.executionDuration",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"ERROR_DE": {
+										"value": {
+											"value": "@if(\n    and(\n        contains(activity('RefreshDataset').output, 'status'),\n        equals(toLower(activity('RefreshDataset').output.status), 'completed')\n    ),\n    '',\n    if(\n        contains(activity('RefreshDataset').output, 'error'),\n        concat(\n            activity('RefreshDataset').output.error.code,\n            ': ',\n            activity('RefreshDataset').output.error.message\n        ),\n        concat(\n            'Please check the ADF Monitor for run: ''', pipeline().parameters.RUN_CD, ''''\n        )\n    )\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertLogRefreshRunning').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "UpdateLogRefreshFailed",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "RefreshDataset",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": "FAILED",
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@activity('RefreshDataset').output.executionDuration",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"ERROR_DE": {
+										"value": {
+											"value": "@if(\n    contains(activity('RefreshDataset').output, 'error'),\n    concat(\n        activity('RefreshDataset').output.error.code,\n        ': ',\n        activity('RefreshDataset').output.error.message\n    ),\n    if(\n        contains(activity('RefreshDataset').output, 'ADFWebActivityResponseHeaders'),\n        activity('RefreshDataset').output.ADFWebActivityResponseHeaders['X-PowerBI-Error-Info'],\n        concat(\n            'Please check the ADF Monitor for run: ''', pipeline().parameters.RUN_CD, ''''\n        )\n    )\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertLogRefreshRunning').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "RefreshDataset",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "InsertLogRefreshRunning",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"httpRequestTimeout": "00:05:00",
+								"url": {
+									"value": "@concat('https://api.powerbi.com/v1.0/myorg/groups/', item().GROUP_CD, '/datasets/', item().DATASET_CD, '/refreshes')",
+									"type": "Expression"
+								},
+								"connectVia": {
+									"referenceName": "ClusterSvilDatalake",
+									"type": "IntegrationRuntimeReference"
+								},
+								"body": {
+									"type": "full",
+									"commitMode": "transactional",
+									"applyRefreshPolicy": "false"
+								},
+								"authentication": {
+									"type": "ServicePrincipal",
+									"userTenant": {
+										"value": "@item().AZURE_TENANT_CD",
+										"type": "Expression"
+									},
+									"username": {
+										"value": "@item().SERVICE_PRINCIPAL_APP_CD",
+										"type": "Expression"
+									},
+									"resource": "https://analysis.windows.net/powerbi/api",
+									"password": {
+										"type": "AzureKeyVaultSecret",
+										"store": {
+											"referenceName": "AzureKeyVault",
+											"type": "LinkedServiceReference",
+											"parameters": {
+												"akv_name": {
+													"value": "@item().AZURE_KEY_VAULT_NAME_CD",
+													"type": "Expression"
+												}
+											}
+										},
+										"secretName": {
+											"value": "@item().SECRET_PWD_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "UpdateOutputQueueRunning",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[CFG].[SP_OUTPUT_QUEUE_UPDATE]",
+					"storedProcedureParameters": {
+						"CASE_CD": {
+							"value": "RUNNING",
+							"type": "String"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@pipeline().parameters.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "UpdateOutputQueueSucceeded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ForEachDataset",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[CFG].[SP_OUTPUT_QUEUE_UPDATE]",
+					"storedProcedureParameters": {
+						"CASE_CD": {
+							"value": "SUCCEEDED",
+							"type": "String"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@pipeline().parameters.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "UpdateOutputQueueFailed",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "ForEachDataset",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[CFG].[SP_OUTPUT_QUEUE_UPDATE]",
+					"storedProcedureParameters": {
+						"CASE_CD": {
+							"value": "FAILED",
+							"type": "String"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@pipeline().parameters.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string",
+				"defaultValue": "INASCOLTIONLINE"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			},
+			"OUTPUT_CATEGORY_CD": {
+				"type": "string",
+				"defaultValue": "ETL"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string",
+				"defaultValue": "sql-ao-pov.database.windows.net"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string",
+				"defaultValue": "sqldb-ao-pov"
+			},
+			"ROW_NU": {
+				"type": "int"
+			}
+		},
+		"variables": {
+			"activity_status_cd": {
+				"type": "String"
+			},
+			"elapsed_seconds_nu": {
+				"type": "Integer"
+			},
+			"error_de": {
+				"type": "String"
+			},
+			"failed_elapsed_seconds_nu": {
+				"type": "Integer"
+			},
+			"failed_error_de": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

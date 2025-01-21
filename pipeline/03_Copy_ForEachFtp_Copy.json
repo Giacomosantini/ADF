@@ -1,0 +1,459 @@
+{
+	"name": "03_Copy_ForEachFtp_Copy",
+	"properties": {
+		"activities": [
+			{
+				"name": "ForEachFile",
+				"type": "ForEach",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@pipeline().parameters.FILE_CD_LS",
+						"type": "Expression"
+					},
+					"isSequential": true,
+					"activities": [
+						{
+							"name": "ExecuteCopy",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "03_Copy_Copy",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"RUN_CD": {
+										"value": "@pipeline().parameters.RUN_CD",
+										"type": "Expression"
+									},
+									"PIPELINE_CD": {
+										"value": "@pipeline().parameters.PIPELINE_CD",
+										"type": "Expression"
+									},
+									"TRIGGER_CD": {
+										"value": "@pipeline().parameters.TRIGGER_CD",
+										"type": "Expression"
+									},
+									"TRIGGER_TS": {
+										"value": "@pipeline().parameters.TRIGGER_TS",
+										"type": "Expression"
+									},
+									"TYPE_CD": {
+										"value": "@pipeline().parameters.TYPE_CD",
+										"type": "Expression"
+									},
+									"FILE_CD": {
+										"value": "@pipeline().parameters.FILE_CD",
+										"type": "Expression"
+									},
+									"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"ASQL_DATABASE_CD": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									},
+									"ADB_WORKSPACE_URL": {
+										"value": "@pipeline().parameters.ADB_WORKSPACE_URL",
+										"type": "Expression"
+									},
+									"ADB_WORKSPACE_RESOURCE_CD": {
+										"value": "@pipeline().parameters.ADB_WORKSPACE_RESOURCE_CD",
+										"type": "Expression"
+									},
+									"ADB_NOTEBOOK_PATH_CD": {
+										"value": "@pipeline().parameters.ADB_NOTEBOOK_PATH_CD",
+										"type": "Expression"
+									},
+									"ADB_EXISTING_CLUSTER_CD": {
+										"value": "@pipeline().parameters.ADB_EXISTING_CLUSTER_CD",
+										"type": "Expression"
+									},
+									"ADB_JOB_CLUSTER_VERSION_CD": {
+										"value": "@pipeline().parameters.ADB_JOB_CLUSTER_VERSION_CD",
+										"type": "Expression"
+									},
+									"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+										"value": "@pipeline().parameters.ADB_JOB_CLUSTER_NODE_TYPE_CD",
+										"type": "Expression"
+									},
+									"ADB_JOB_CLUSTER_WORKERS_CD": {
+										"value": "@pipeline().parameters.ADB_JOB_CLUSTER_WORKERS_CD",
+										"type": "Expression"
+									},
+									"LAST_EXTRACTED_TS": {
+										"value": "@pipeline().parameters.LAST_EXTRACTED_TS",
+										"type": "Expression"
+									},
+									"CURRENT_EXTRACTED_TS": {
+										"value": "@pipeline().parameters.CURRENT_EXTRACTED_TS",
+										"type": "Expression"
+									},
+									"EXTRACTION_TYPE_CD": {
+										"value": "@pipeline().parameters.EXTRACTION_TYPE_CD",
+										"type": "Expression"
+									},
+									"AZURE_KEY_VAULT_NAME_CD": {
+										"value": "@pipeline().parameters.AZURE_KEY_VAULT_NAME_CD",
+										"type": "Expression"
+									},
+									"SOURCE_SYSTEM_CD": {
+										"value": "@pipeline().parameters.SOURCE_SYSTEM_CD",
+										"type": "Expression"
+									},
+									"SOURCE_SCHEMA_CD": {
+										"value": "@pipeline().parameters.SOURCE_SCHEMA_CD",
+										"type": "Expression"
+									},
+									"SOURCE_TABLE_CD": {
+										"value": "@pipeline().parameters.SOURCE_TABLE_CD",
+										"type": "Expression"
+									},
+									"FILTERING_FIELD_CD": {
+										"value": "@pipeline().parameters.FILTERING_FIELD_CD",
+										"type": "Expression"
+									},
+									"WHERE_DE": {
+										"value": "@pipeline().parameters.WHERE_DE",
+										"type": "Expression"
+									},
+									"QUERY_DE": {
+										"value": "@pipeline().parameters.QUERY_DE",
+										"type": "Expression"
+									},
+									"HOST_CD": {
+										"value": "@pipeline().parameters.HOST_CD",
+										"type": "Expression"
+									},
+									"PORT_CD": {
+										"value": "@pipeline().parameters.PORT_CD",
+										"type": "Expression"
+									},
+									"USER_CD": {
+										"value": "@pipeline().parameters.USER_CD",
+										"type": "Expression"
+									},
+									"SECRET_PWD_CD": {
+										"value": "@pipeline().parameters.SECRET_PWD_CD",
+										"type": "Expression"
+									},
+									"SSH_HOST_KEY_FINGER_PRINT_CD": {
+										"value": "@pipeline().parameters.SSH_HOST_KEY_FINGER_PRINT_CD",
+										"type": "Expression"
+									},
+									"FILE_PATH_CD": {
+										"value": "@pipeline().parameters.FILE_PATH_CD",
+										"type": "Expression"
+									},
+									"FILE_NAME_CD": {
+										"value": "@item().name",
+										"type": "Expression"
+									},
+									"FILE_DELIMITER_CD": {
+										"value": "@pipeline().parameters.FILE_DELIMITER_CD",
+										"type": "Expression"
+									},
+									"FILE_EXTENSION_CD": {
+										"value": "@pipeline().parameters.FILE_EXTENSION_CD",
+										"type": "Expression"
+									},
+									"FILE_SHEET_NAME_CD": {
+										"value": "@pipeline().parameters.FILE_SHEET_NAME_CD",
+										"type": "Expression"
+									},
+									"FILE_RANGE_CD": {
+										"value": "@pipeline().parameters.FILE_RANGE_CD",
+										"type": "Expression"
+									},
+									"FILE_COMPRESSION_CD": {
+										"value": "@pipeline().parameters.FILE_COMPRESSION_CD",
+										"type": "Expression"
+									},
+									"FILE_ENCODING_CD": {
+										"value": "@pipeline().parameters.FILE_ENCODING_CD",
+										"type": "Expression"
+									},
+									"FILE_ROW_DELIMITER_CD": {
+										"value": "@pipeline().parameters.FILE_ROW_DELIMITER_CD",
+										"type": "Expression"
+									},
+									"FILE_QUOTE_CHARACTER_CD": {
+										"value": "@pipeline().parameters.FILE_QUOTE_CHARACTER_CD",
+										"type": "Expression"
+									},
+									"FILE_ESCAPE_CHARACTER_CD": {
+										"value": "@pipeline().parameters.FILE_ESCAPE_CHARACTER_CD",
+										"type": "Expression"
+									},
+									"FILE_NULL_VALUE_CD": {
+										"value": "@pipeline().parameters.FILE_NULL_VALUE_CD",
+										"type": "Expression"
+									},
+									"FILE_FIRST_ROW_AS_HEADER_FL": {
+										"value": "@pipeline().parameters.FILE_FIRST_ROW_AS_HEADER_FL",
+										"type": "Expression"
+									},
+									"FILE_SKIP_LINE_COUNT_NU": {
+										"value": "@pipeline().parameters.FILE_SKIP_LINE_COUNT_NU",
+										"type": "Expression"
+									},
+									"ADLS_STORAGE_ACCOUNT_CD": {
+										"value": "@pipeline().parameters.ADLS_STORAGE_ACCOUNT_CD",
+										"type": "Expression"
+									},
+									"ADLS_BLOB_CONTAINER_CD": {
+										"value": "@pipeline().parameters.ADLS_BLOB_CONTAINER_CD",
+										"type": "Expression"
+									},
+									"ADLS_FILE_PATH_CD": {
+										"value": "@pipeline().parameters.ADLS_FILE_PATH_CD",
+										"type": "Expression"
+									},
+									"ADLS_FILE_NAME_CD": {
+										"value": "@pipeline().parameters.ADLS_FILE_NAME_CD",
+										"type": "Expression"
+									},
+									"ADB_VOLUME_CATALOG_CD": {
+										"value": "@pipeline().parameters.ADB_VOLUME_CATALOG_CD",
+										"type": "Expression"
+									},
+									"CATALOG_CD": {
+										"value": "@pipeline().parameters.CATALOG_CD",
+										"type": "Expression"
+									},
+									"SCHEMA_CD": {
+										"value": "@pipeline().parameters.SCHEMA_CD",
+										"type": "Expression"
+									},
+									"TABLE_CD": {
+										"value": "@pipeline().parameters.TABLE_CD",
+										"type": "Expression"
+									},
+									"RUN_HEADER_CHECK_FL": {
+										"value": "@pipeline().parameters.RUN_HEADER_CHECK_FL",
+										"type": "Expression"
+									},
+									"AWS_ACCESS_KEY_CD": {
+										"value": "@pipeline().parameters.AWS_ACCESS_KEY_CD",
+										"type": "Expression"
+									},
+									"AWS_SECRET_CD": {
+										"value": "@pipeline().parameters.AWS_SECRET_CD",
+										"type": "Expression"
+									},
+									"AWS_BUCKET_CD": {
+										"value": "@pipeline().parameters.AWS_BUCKET_CD",
+										"type": "Expression"
+									},
+									"AWS_REGION_CD": {
+										"value": "@pipeline().parameters.AWS_REGION_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			},
+			"TYPE_CD": {
+				"type": "string"
+			},
+			"FILE_CD": {
+				"type": "string"
+			},
+			"FILE_CD_LS": {
+				"type": "array"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_URL": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_RESOURCE_CD": {
+				"type": "string"
+			},
+			"ADB_NOTEBOOK_PATH_CD": {
+				"type": "string"
+			},
+			"ADB_EXISTING_CLUSTER_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_VERSION_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_WORKERS_CD": {
+				"type": "string"
+			},
+			"LAST_EXTRACTED_TS": {
+				"type": "string",
+				"defaultValue": "2022-11-21 09:00:00.0"
+			},
+			"CURRENT_EXTRACTED_TS": {
+				"type": "string"
+			},
+			"EXTRACTION_TYPE_CD": {
+				"type": "string"
+			},
+			"AZURE_KEY_VAULT_NAME_CD": {
+				"type": "string",
+				"defaultValue": "akv-ao-pov"
+			},
+			"SOURCE_SYSTEM_CD": {
+				"type": "string",
+				"defaultValue": "FILESYSTEM"
+			},
+			"SOURCE_SCHEMA_CD": {
+				"type": "string"
+			},
+			"SOURCE_TABLE_CD": {
+				"type": "string"
+			},
+			"FILTERING_FIELD_CD": {
+				"type": "string"
+			},
+			"WHERE_DE": {
+				"type": "string"
+			},
+			"QUERY_DE": {
+				"type": "string"
+			},
+			"HOST_CD": {
+				"type": "string",
+				"defaultValue": "\\\\nasto4\\ASCOLTIONLINE\\"
+			},
+			"PORT_CD": {
+				"type": "string"
+			},
+			"USER_CD": {
+				"type": "string",
+				"defaultValue": "rai\\srvascolti"
+			},
+			"SECRET_PWD_CD": {
+				"type": "string",
+				"defaultValue": "var-nasto4-ao-pwd"
+			},
+			"SSH_HOST_KEY_FINGER_PRINT_CD": {
+				"type": "string"
+			},
+			"FILE_PATH_CD": {
+				"type": "string",
+				"defaultValue": "FullDayByViewing"
+			},
+			"FILE_NAME_CD": {
+				"type": "string",
+				"defaultValue": "FullDay"
+			},
+			"FILE_DELIMITER_CD": {
+				"type": "string"
+			},
+			"FILE_EXTENSION_CD": {
+				"type": "string"
+			},
+			"FILE_SHEET_NAME_CD": {
+				"type": "string"
+			},
+			"FILE_RANGE_CD": {
+				"type": "string"
+			},
+			"FILE_COMPRESSION_CD": {
+				"type": "string"
+			},
+			"FILE_ENCODING_CD": {
+				"type": "string"
+			},
+			"FILE_ROW_DELIMITER_CD": {
+				"type": "string"
+			},
+			"FILE_QUOTE_CHARACTER_CD": {
+				"type": "string"
+			},
+			"FILE_ESCAPE_CHARACTER_CD": {
+				"type": "string"
+			},
+			"FILE_NULL_VALUE_CD": {
+				"type": "string"
+			},
+			"FILE_FIRST_ROW_AS_HEADER_FL": {
+				"type": "string"
+			},
+			"FILE_SKIP_LINE_COUNT_NU": {
+				"type": "string"
+			},
+			"ADLS_STORAGE_ACCOUNT_CD": {
+				"type": "string"
+			},
+			"ADLS_BLOB_CONTAINER_CD": {
+				"type": "string"
+			},
+			"ADLS_FILE_PATH_CD": {
+				"type": "string"
+			},
+			"ADLS_FILE_NAME_CD": {
+				"type": "string"
+			},
+			"ADB_VOLUME_CATALOG_CD": {
+				"type": "string"
+			},
+			"CATALOG_CD": {
+				"type": "string"
+			},
+			"SCHEMA_CD": {
+				"type": "string"
+			},
+			"TABLE_CD": {
+				"type": "string"
+			},
+			"RUN_HEADER_CHECK_FL": {
+				"type": "string"
+			},
+			"AWS_ACCESS_KEY_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-access-key-id"
+			},
+			"AWS_SECRET_CD": {
+				"type": "string",
+				"defaultValue": "var-s3-total-audience-secret-access-key"
+			},
+			"AWS_BUCKET_CD": {
+				"type": "string",
+				"defaultValue": "total-audience"
+			},
+			"AWS_REGION_CD": {
+				"type": "string",
+				"defaultValue": "eu-south-1"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-11-23T17:23:00Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

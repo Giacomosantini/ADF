@@ -1,0 +1,38 @@
+{
+	"name": "ERRORCHECK",
+	"properties": {
+		"description": "ERRORCHECK",
+		"annotations": [
+			"Ascolti Online"
+		],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "01_CopyAndProcess",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"PIPELINE_CD": "ERRORCHECK"
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2024-02-12T00:00:00",
+				"timeZone": "W. Europe Standard Time",
+				"schedule": {
+					"minutes": [
+						0
+					],
+					"hours": [
+						13
+					]
+				}
+			}
+		}
+	}
+}

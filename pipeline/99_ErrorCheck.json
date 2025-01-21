@@ -1,0 +1,1631 @@
+{
+	"name": "99_ErrorCheck",
+	"properties": {
+		"activities": [
+			{
+				"name": "InsertLogStoredProcedureErrorCheckRunning",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "SetSinkStorageAccountCd",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetSinkBlobContainerCd",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetSinkFilePathCd",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetCurrentTs",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetAzureLogicAppUrl",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "SetEmailReceiversCd",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+						"storedProcedureParameters": {
+							"ACTIVITY_DE": {
+								"type": "String",
+								"value": "PROCESS"
+							},
+							"ACTIVITY_STATUS_CD": {
+								"type": "String",
+								"value": "RUNNING"
+							},
+							"PIPELINE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.PIPELINE_CD",
+									"type": "Expression"
+								}
+							},
+							"ROW_NU": {
+								"type": "Int64",
+								"value": null
+							},
+							"RUN_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.RUN_CD",
+									"type": "Expression"
+								}
+							},
+							"TRIGGER_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.TRIGGER_CD",
+									"type": "Expression"
+								}
+							},
+							"EXTRACTED_FROM_TS": {
+								"type": "String",
+								"value": null
+							},
+							"EXTRACTED_TO_TS": {
+								"type": "String",
+								"value": null
+							},
+							"ERROR_DE": {
+								"type": "String",
+								"value": null
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "UpdateLogStoredProcedureErrorCheckSucceeded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "StoredProcedureErrorCheck",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+					"storedProcedureParameters": {
+						"ACTIVITY_STATUS_CD": {
+							"value": "SUCCEEDED",
+							"type": "String"
+						},
+						"ELAPSED_SECONDS_NU": {
+							"value": {
+								"value": "@int(activity('StoredProcedureErrorCheck').output.firstRow.ELAPSED_SECONDS_NU)",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ERROR_DE": {
+							"value": null,
+							"type": "String"
+						},
+						"READ_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"READ_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@activity('InsertLogStoredProcedureErrorCheckRunning').output.firstRow.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"WRITTEN_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"WRITTEN_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": null,
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "UpdateLogStoredProcedureErrorCheckFailed",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "StoredProcedureErrorCheck",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+					"storedProcedureParameters": {
+						"ACTIVITY_STATUS_CD": {
+							"value": "FAILED",
+							"type": "String"
+						},
+						"ERROR_DE": {
+							"value": null,
+							"type": "String"
+						},
+						"READ_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"READ_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@activity('InsertLogStoredProcedureErrorCheckRunning').output.firstRow.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"WRITTEN_DATA_NU": {
+							"value": null,
+							"type": "String"
+						},
+						"WRITTEN_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ELAPSED_SECONDS_NU": {
+							"value": {
+								"value": "@activity('StoredProcedureErrorCheck').output.executionDuration",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": null,
+							"type": "String"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "IfErrorCheckTableEmpty",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "UpdateLogStoredProcedureErrorCheckSucceeded",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(\n  int(activity('StoredProcedureErrorCheck').output.firstRow.RUN_COPY_FL),\n  0\n)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "CopyErrorCheck",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "InsertCopyErrorCheckResultRunning",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": "SELECT * FROM [ECK].[ERRORS];",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_AzureSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"fully_qualified_domain_name": {
+											"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+											"type": "Expression"
+										},
+										"database_name": {
+											"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_AzureDataLakeStorageGen2_DelimitedText",
+									"type": "DatasetReference",
+									"parameters": {
+										"storage_account": {
+											"value": "@variables('SINK_STORAGE_ACCOUNT_CD')",
+											"type": "Expression"
+										},
+										"blob_container": {
+											"value": "@variables('SINK_BLOB_CONTAINER_CD')",
+											"type": "Expression"
+										},
+										"file_path": {
+											"value": "@variables('file_path')",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@variables('file_name')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "UpdateCopyErrorCheckResultSucceeded",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyErrorCheck",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": "SUCCEEDED",
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@if(\n    contains(activity('CopyErrorCheck').output, 'copyDuration'),\n    string(activity('CopyErrorCheck').output.copyDuration),\n    ''\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": null,
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck').output.dataRead)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck').output.rowsRead)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertCopyErrorCheckResultRunning').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck').output.dataWritten)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck').output.rowsCopied)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "InsertCopyErrorCheckResultRunning",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "SetFileName",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "SetFilePath",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderStoredProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+									"storedProcedureParameters": {
+										"ACTIVITY_DE": {
+											"type": "String",
+											"value": "COPY_HIERARCHICAL_DIRECTORY"
+										},
+										"ACTIVITY_STATUS_CD": {
+											"type": "String",
+											"value": "RUNNING"
+										},
+										"PIPELINE_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											}
+										},
+										"ROW_NU": {
+											"type": "Int64",
+											"value": null
+										},
+										"RUN_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											}
+										},
+										"TRIGGER_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											}
+										},
+										"EXTRACTED_FROM_TS": {
+											"type": "String",
+											"value": null
+										},
+										"EXTRACTED_TO_TS": {
+											"type": "String",
+											"value": null
+										},
+										"ERROR_DE": {
+											"type": "String",
+											"value": null
+										}
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DS_AzureSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"fully_qualified_domain_name": {
+											"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+											"type": "Expression"
+										},
+										"database_name": {
+											"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+											"type": "Expression"
+										}
+									}
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "UpdateCopyErrorCheckResultFailed",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyErrorCheck",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": "FAILED",
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": {
+											"value": "@concat(\n    string(activity('CopyErrorCheck').Error.errorCode),\n    ': ',\n    string(activity('CopyErrorCheck').Error.message)\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertCopyErrorCheckResultRunning').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": null,
+										"type": "String"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@if(\n    contains(activity('CopyErrorCheck').output, 'copyDuration'),\n    string(activity('CopyErrorCheck').output.copyDuration),\n    ''\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "CopyErrorCheck_Flat",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "InsertCopyErrorCheckResultRunning_Flat",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": "SELECT * FROM [ECK].[ERRORS];",
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "DS_AzureSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"fully_qualified_domain_name": {
+											"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+											"type": "Expression"
+										},
+										"database_name": {
+											"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "DS_AzureDataLakeStorageGen2_DelimitedText",
+									"type": "DatasetReference",
+									"parameters": {
+										"storage_account": {
+											"value": "@variables('SINK_STORAGE_ACCOUNT_CD')",
+											"type": "Expression"
+										},
+										"blob_container": {
+											"value": "@variables('SINK_BLOB_CONTAINER_CD')",
+											"type": "Expression"
+										},
+										"file_path": {
+											"value": "@concat(\n    variables('SINK_FILE_PATH_CD'), '/flat_repository'\n)",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@variables('file_name')",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "UpdateCopyErrorCheckResultSucceeded_Flat",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyErrorCheck_Flat",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": "SUCCEEDED",
+										"type": "String"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@if(\n    contains(activity('CopyErrorCheck_Flat').output, 'copyDuration'),\n    string(activity('CopyErrorCheck_Flat').output.copyDuration),\n    ''\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": null,
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck_Flat').output.dataRead)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck_Flat').output.rowsRead)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertCopyErrorCheckResultRunning_Flat').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck_Flat').output.dataWritten)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": {
+											"value": "@string(activity('CopyErrorCheck_Flat').output.rowsCopied)",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "InsertCopyErrorCheckResultRunning_Flat",
+							"type": "Lookup",
+							"dependsOn": [
+								{
+									"activity": "SetFileName",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderStoredProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+									"storedProcedureParameters": {
+										"ACTIVITY_DE": {
+											"type": "String",
+											"value": "COPY_FLAT_DIRECTORY"
+										},
+										"ACTIVITY_STATUS_CD": {
+											"type": "String",
+											"value": "RUNNING"
+										},
+										"PIPELINE_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											}
+										},
+										"ROW_NU": {
+											"type": "Int64",
+											"value": null
+										},
+										"RUN_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											}
+										},
+										"TRIGGER_CD": {
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											}
+										},
+										"EXTRACTED_FROM_TS": {
+											"type": "String",
+											"value": null
+										},
+										"EXTRACTED_TO_TS": {
+											"type": "String",
+											"value": null
+										},
+										"ERROR_DE": {
+											"type": "String",
+											"value": null
+										}
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"dataset": {
+									"referenceName": "DS_AzureSqlTable",
+									"type": "DatasetReference",
+									"parameters": {
+										"fully_qualified_domain_name": {
+											"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+											"type": "Expression"
+										},
+										"database_name": {
+											"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+											"type": "Expression"
+										}
+									}
+								},
+								"firstRowOnly": true
+							}
+						},
+						{
+							"name": "UpdateCopyErrorCheckResultFailed_Flat",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [
+								{
+									"activity": "CopyErrorCheck_Flat",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+								"storedProcedureParameters": {
+									"ACTIVITY_STATUS_CD": {
+										"value": "FAILED",
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": {
+											"value": "@concat(\n    string(activity('CopyErrorCheck_Flat').Error.errorCode),\n    ': ',\n    string(activity('CopyErrorCheck_Flat').Error.message)\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"READ_DATA_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"READ_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ROW_NU": {
+										"value": {
+											"value": "@activity('InsertCopyErrorCheckResultRunning_Flat').output.firstRow.ROW_NU",
+											"type": "Expression"
+										},
+										"type": "Int64"
+									},
+									"WRITTEN_DATA_NU": {
+										"value": null,
+										"type": "String"
+									},
+									"WRITTEN_ROWS_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"ELAPSED_SECONDS_NU": {
+										"value": {
+											"value": "@if(\n    contains(activity('CopyErrorCheck_Flat').output, 'copyDuration'),\n    string(activity('CopyErrorCheck_Flat').output.copyDuration),\n    ''\n)",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "WebLogicAppSendEmail",
+							"type": "WebActivity",
+							"dependsOn": [
+								{
+									"activity": "UpdateCopyErrorCheckResultSucceeded",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								},
+								{
+									"activity": "UpdateCopyErrorCheckResultSucceeded_Flat",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"method": "POST",
+								"url": {
+									"value": "@variables('AZURE_LOGIC_APP_URL')",
+									"type": "Expression"
+								},
+								"body": {
+									"value": "@concat('{\n    \"properties\": {\n        \"storage_account\": {\n            \"type\": \"string\",\n            \"value\": \"', variables('SINK_STORAGE_ACCOUNT_CD'), '\"\n        },\n        \"blob_container\": {\n            \"type\": \"string\",\n            \"value\": \"', variables('SINK_BLOB_CONTAINER_CD'), '\"\n        },\n        \"file_path\": {\n            \"type\": \"string\",\n            \"value\": \"', variables('file_path'), '\"\n        },\n        \"file_name\": {\n            \"type\": \"string\",\n            \"value\": \"', variables('file_name'), '\"\n        },\n        \"receivers\": {\n            \"type\": \"string\",\n            \"value\": \"', variables('EMAIL_RECEIVERS_CD'), '\"\n        },\n        \"cc_receivers\": {\n            \"type\": \"string\",\n            \"value\": \"', variables('CC_RECEIVERS_CD'), '\"\n        }\n    },\n    \"type\": \"object\"\n}')",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetFilePath",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "file_path",
+								"value": {
+									"value": "@concat(\n    variables('SINK_FILE_PATH_CD'), '/',\n    formatDateTime(utcNow(), 'yyyy'), '/',\n    formatDateTime(utcNow(), 'MM'), '/',\n    formatDateTime(utcNow(), 'dd'), '/'\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetFileName",
+							"type": "SetVariable",
+							"dependsOn": [],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "file_name",
+								"value": {
+									"value": "@concat(\n    'error_',\n    formatDateTime(\n        variables('CURRENT_TS'),\n        'yyyyMMdd_HHmmss'\n    ),\n    '.txt'\n)",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "ExecuteLogWebLogicAppSendEmail",
+							"type": "ExecutePipeline",
+							"dependsOn": [
+								{
+									"activity": "WebLogicAppSendEmail",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "03_Copy_Skip",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"PIPELINE_CD": {
+										"value": "@pipeline().parameters.PIPELINE_CD",
+										"type": "Expression"
+									},
+									"RUN_CD": {
+										"value": "@pipeline().parameters.RUN_CD",
+										"type": "Expression"
+									},
+									"TRIGGER_CD": {
+										"value": "@pipeline().parameters.TRIGGER_CD",
+										"type": "Expression"
+									},
+									"ACTIVITY_DE": "SEND_EMAIL",
+									"ACTIVITY_STATUS_CD": {
+										"value": "@if(\n    contains(activity('WebLogicAppSendEmail').output, 'status'),\n    toUpper(string(activity('WebLogicAppSendEmail').output.status)),\n    'FAILED'\n)",
+										"type": "Expression"
+									},
+									"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"ASQL_DATABASE_CD": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									},
+									"ERROR_DE": {
+										"value": "@if(\n    contains(activity('WebLogicAppSendEmail').output, 'status'),\n    'NULL',\n    'Something went wrong, please check the Azure Logic App run history from the Azure Portal!'\n)",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "InsertLogSkipped",
+							"type": "SqlServerStoredProcedure",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "7.00:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+								"storedProcedureParameters": {
+									"ACTIVITY_DE": {
+										"value": "COPY",
+										"type": "String"
+									},
+									"ACTIVITY_STATUS_CD": {
+										"value": "SKIPPED_NOERROR",
+										"type": "String"
+									},
+									"EXTRACTED_FROM_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"EXTRACTED_TO_TS": {
+										"value": null,
+										"type": "String"
+									},
+									"PIPELINE_CD": {
+										"value": {
+											"value": "@pipeline().parameters.PIPELINE_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ROW_NU": {
+										"value": null,
+										"type": "Int64"
+									},
+									"RUN_CD": {
+										"value": {
+											"value": "@pipeline().parameters.RUN_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"TRIGGER_CD": {
+										"value": {
+											"value": "@pipeline().parameters.TRIGGER_CD",
+											"type": "Expression"
+										},
+										"type": "String"
+									},
+									"ERROR_DE": {
+										"value": null,
+										"type": "String"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureSqlDatabase",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"fully_qualified_domain_name": {
+										"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+										"type": "Expression"
+									},
+									"database_name": {
+										"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "StoredProcedureErrorCheck",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "InsertLogStoredProcedureErrorCheckRunning",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[ECK].[SP_ERROR_CHECK]",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "SetCurrentTs",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "CURRENT_TS",
+					"value": {
+						"value": "@utcNow()",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "GetParametersErrorCheck",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "SwitchSkipOrRun",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "@concat('SELECT\n\t [SINK_STORAGE_ACCOUNT_CD]\n\t,[SINK_BLOB_CONTAINER_CD]\n\t,[SINK_FILE_PATH_CD]\n\t,[AZURE_LOGIC_APP_URL]\n\t,[EMAIL_RECEIVERS_CD]\n\t,[CC_RECEIVERS_CD]\nFROM\n\t[CFG].[ERRORCHECK_PARAMETERS]\nWHERE 1 = 1\n\tAND [ACTIVE_FL]  = 1\n\tAND [PIPELINE_CD] = ''', pipeline().parameters.PIPELINE_CD, '''\n;')",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "SetSinkStorageAccountCd",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetParametersErrorCheck",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "SINK_STORAGE_ACCOUNT_CD",
+					"value": {
+						"value": "@activity('GetParametersErrorCheck').output.value[0].SINK_STORAGE_ACCOUNT_CD",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetSinkFilePathCd",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetParametersErrorCheck",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "SINK_FILE_PATH_CD",
+					"value": {
+						"value": "@activity('GetParametersErrorCheck').output.value[0].SINK_FILE_PATH_CD",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetSinkBlobContainerCd",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetParametersErrorCheck",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "SINK_BLOB_CONTAINER_CD",
+					"value": {
+						"value": "@activity('GetParametersErrorCheck').output.value[0].SINK_BLOB_CONTAINER_CD",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SwitchSkipOrRun",
+				"type": "Switch",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@if(\n    if(\n        greater(pipeline().parameters.ACTIVE_FROM_HR, pipeline().parameters.ACTIVE_TO_HR),\n        and(\n            less(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                pipeline().parameters.ACTIVE_FROM_HR\n                )\n            ,greater(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                pipeline().parameters.ACTIVE_TO_HR\n                )\n            ),\n        or(\n            less(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                pipeline().parameters.ACTIVE_FROM_HR\n                )\n            ,greater(\n                concat(formatDateTime(convertFromUtc(utcNow(), 'W. Europe Standard Time'), 'HH:mm')),\n                pipeline().parameters.ACTIVE_TO_HR\n                )\n            )\n    ), \n    'SKIPPED_SLEEP', \n    'Default'\n)",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "SKIPPED_SLEEP",
+							"activities": [
+								{
+									"name": "ExecuteCopySkippedSleep",
+									"type": "ExecutePipeline",
+									"dependsOn": [],
+									"policy": {
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"pipeline": {
+											"referenceName": "03_Copy_Skip",
+											"type": "PipelineReference"
+										},
+										"waitOnCompletion": true,
+										"parameters": {
+											"PIPELINE_CD": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"RUN_CD": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"TRIGGER_CD": {
+												"value": "@pipeline().parameters.TRIGGER_CD",
+												"type": "Expression"
+											},
+											"ACTIVITY_DE": "PROCESS",
+											"ACTIVITY_STATUS_CD": "SKIPPED_SLEEP",
+											"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+												"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+												"type": "Expression"
+											},
+											"ASQL_DATABASE_CD": {
+												"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+												"type": "Expression"
+											},
+											"ERROR_DE": "NULL"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "SetAzureLogicAppUrl",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetParametersErrorCheck",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "AZURE_LOGIC_APP_URL",
+					"value": {
+						"value": "@activity('GetParametersErrorCheck').output.value[0].AZURE_LOGIC_APP_URL",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetEmailReceiversCd",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetParametersErrorCheck",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "EMAIL_RECEIVERS_CD",
+					"value": {
+						"value": "@activity('GetParametersErrorCheck').output.value[0].EMAIL_RECEIVERS_CD",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "SetCCReceiversCd",
+				"type": "SetVariable",
+				"dependsOn": [
+					{
+						"activity": "GetParametersErrorCheck",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "CC_RECEIVERS_CD",
+					"value": {
+						"value": "@activity('GetParametersErrorCheck').output.value[0].CC_RECEIVERS_CD",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string",
+				"defaultValue": "ERRORCHECK"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string",
+				"defaultValue": "sql-ao-pov.database.windows.net"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string",
+				"defaultValue": "sqldb-ao-pov"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"ACTIVE_FROM_HR": {
+				"type": "string",
+				"defaultValue": "00:00"
+			},
+			"ACTIVE_TO_HR": {
+				"type": "string",
+				"defaultValue": "23:59"
+			}
+		},
+		"variables": {
+			"CURRENT_TS": {
+				"type": "String",
+				"defaultValue": "2024-02-09T17:59:34.6475226Z"
+			},
+			"SINK_STORAGE_ACCOUNT_CD": {
+				"type": "String",
+				"defaultValue": "staopov"
+			},
+			"SINK_FILE_PATH_CD": {
+				"type": "String",
+				"defaultValue": "error_check"
+			},
+			"SINK_BLOB_CONTAINER_CD": {
+				"type": "String",
+				"defaultValue": "aonline"
+			},
+			"AZURE_LOGIC_APP_URL": {
+				"type": "String",
+				"defaultValue": "https://prod-16.northeurope.logic.azure.com:443/workflows/811c7cf2111c40ec95750011c8b0c454/triggers/manual/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Mhy8FbjR8czicb-a51KF9rUVmrjR3eJKOzzXg2yI5rY"
+			},
+			"EMAIL_RECEIVERS_CD": {
+				"type": "String",
+				"defaultValue": "giuseppe.ceravolo@avanade.com;vanessa.perticone@avanade.com"
+			},
+			"file_path": {
+				"type": "String",
+				"defaultValue": "error_check/2024/02/09/"
+			},
+			"file_name": {
+				"type": "String",
+				"defaultValue": "error_20240209_122001.txt"
+			},
+			"CC_RECEIVERS_CD": {
+				"type": "String",
+				"defaultValue": "giacomo.santini@avanade.com"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-09-05T13:14:14Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

@@ -1,0 +1,921 @@
+{
+	"name": "03_Process_Notebook",
+	"properties": {
+		"activities": [
+			{
+				"name": "InsertLogRunning",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderStoredProcedureName": "[LOG].[SP_ADF_PIPELINES_INSERT]",
+						"storedProcedureParameters": {
+							"ACTIVITY_DE": {
+								"type": "String",
+								"value": {
+									"value": "@concat(\n\t'PROCESS_',\n\tpipeline().parameters.OUTPUT_CATEGORY_CD,\n    '_',\n    pipeline().parameters.ADB_NOTEBOOK_PATH_CD\n)",
+									"type": "Expression"
+								}
+							},
+							"ACTIVITY_STATUS_CD": {
+								"type": "String",
+								"value": "RUNNING"
+							},
+							"EXTRACTED_FROM_TS": {
+								"type": "String",
+								"value": null
+							},
+							"EXTRACTED_TO_TS": {
+								"type": "String",
+								"value": null
+							},
+							"PIPELINE_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.PIPELINE_CD",
+									"type": "Expression"
+								}
+							},
+							"ROW_NU": {
+								"type": "Int64",
+								"value": null
+							},
+							"RUN_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.RUN_CD",
+									"type": "Expression"
+								}
+							},
+							"TRIGGER_CD": {
+								"type": "String",
+								"value": {
+									"value": "@pipeline().parameters.TRIGGER_CD",
+									"type": "Expression"
+								}
+							},
+							"ERROR_DE": {
+								"type": "String",
+								"value": null
+							}
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "DS_AzureSqlTable",
+						"type": "DatasetReference",
+						"parameters": {
+							"fully_qualified_domain_name": {
+								"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+								"type": "Expression"
+							},
+							"database_name": {
+								"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+								"type": "Expression"
+							}
+						}
+					}
+				}
+			},
+			{
+				"name": "UpdateLogProcessSucceeded",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "SwitchClusterType",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+					"storedProcedureParameters": {
+						"ACTIVITY_STATUS_CD": {
+							"value": {
+								"value": "@variables('activity_status_cd')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"ELAPSED_SECONDS_NU": {
+							"value": {
+								"value": "@variables('elapsed_seconds_nu')",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"ERROR_DE": {
+							"value": {
+								"value": "@variables('error_de')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"READ_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"READ_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@activity('InsertLogRunning').output.firstRow.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"WRITTEN_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"WRITTEN_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "UpdateLogProcessFailed",
+				"type": "SqlServerStoredProcedure",
+				"dependsOn": [
+					{
+						"activity": "SwitchClusterType",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"storedProcedureName": "[LOG].[SP_ADF_PIPELINES_UPDATE]",
+					"storedProcedureParameters": {
+						"ACTIVITY_STATUS_CD": {
+							"value": "FAILED",
+							"type": "String"
+						},
+						"ELAPSED_SECONDS_NU": {
+							"value": {
+								"value": "@variables('failed_elapsed_seconds_nu')",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"ERROR_DE": {
+							"value": {
+								"value": "@variables('failed_error_de')",
+								"type": "Expression"
+							},
+							"type": "String"
+						},
+						"EXTRACTED_FROM_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"EXTRACTED_TO_TS": {
+							"value": null,
+							"type": "String"
+						},
+						"READ_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"READ_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"ROW_NU": {
+							"value": {
+								"value": "@activity('InsertLogRunning').output.firstRow.ROW_NU",
+								"type": "Expression"
+							},
+							"type": "Int64"
+						},
+						"WRITTEN_DATA_NU": {
+							"value": null,
+							"type": "Int64"
+						},
+						"WRITTEN_ROWS_NU": {
+							"value": null,
+							"type": "Int64"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "AzureSqlDatabase",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"fully_qualified_domain_name": {
+							"value": "@pipeline().parameters.ASQL_FULLY_QUALIFIED_DOMAIN_CD",
+							"type": "Expression"
+						},
+						"database_name": {
+							"value": "@pipeline().parameters.ASQL_DATABASE_CD",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "SwitchClusterType",
+				"type": "Switch",
+				"dependsOn": [
+					{
+						"activity": "InsertLogRunning",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"on": {
+						"value": "@if(\n    greater(\n        length(\n            coalesce(\n                pipeline().parameters.ADB_INSTANCE_POOL_CD,\n                ''\n            )\n        ),\n        0\n    ),\n    'INSTANCE_POOL',\n    if(\n        greater(\n            length(\n                coalesce(\n                    pipeline().parameters.ADB_JOB_CLUSTER_VERSION_CD,\n                    ''\n                )\n            ),\n            0\n        ),\n        'JOB_CLUSTER',\n        'DEFAULT'\n    )\n)",
+						"type": "Expression"
+					},
+					"cases": [
+						{
+							"value": "INSTANCE_POOL",
+							"activities": [
+								{
+									"name": "ProcessPool",
+									"type": "DatabricksNotebook",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"notebookPath": {
+											"value": "@pipeline().parameters.ADB_NOTEBOOK_PATH_CD",
+											"type": "Expression"
+										},
+										"baseParameters": {
+											"run_cd": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"pipeline_cd": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"trigger_ts": {
+												"value": "@pipeline().parameters.TRIGGER_TS",
+												"type": "Expression"
+											},
+											"output_category_cd": {
+												"value": "@pipeline().parameters.OUTPUT_CATEGORY_CD",
+												"type": "Expression"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureDatabricksPool",
+										"type": "LinkedServiceReference",
+										"parameters": {
+											"workspace_url": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_URL",
+												"type": "Expression"
+											},
+											"workspace_resource_id": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_RESOURCE_CD",
+												"type": "Expression"
+											},
+											"instance_pool": {
+												"value": "@pipeline().parameters.ADB_INSTANCE_POOL_CD",
+												"type": "Expression"
+											},
+											"cluster_version": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_VERSION_CD",
+												"type": "Expression"
+											},
+											"worker_nodes": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_WORKERS_CD",
+												"type": "Expression"
+											},
+											"workspace_init_script_path": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_INIT_SCRIPT_PATH_CD",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SetActivityStatusCdPool",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessPool",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "activity_status_cd",
+										"value": {
+											"value": "@activity('ProcessPool').output.runOutput.ACTIVITY_STATUS_CD",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetElapsedSecondsNuPool",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessPool",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "elapsed_seconds_nu",
+										"value": {
+											"value": "@activity('ProcessPool').output.runOutput.ELAPSED_SECONDS_NU",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetErrorDePool",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessPool",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "error_de",
+										"value": {
+											"value": "@activity('ProcessPool').output.runOutput.ERROR_DE",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetFailedElapsedSecondsNuPool",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessPool",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "failed_elapsed_seconds_nu",
+										"value": {
+											"value": "@activity('ProcessPool').output.executionDuration",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetFailedErrorDePool",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessPool",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "failed_error_de",
+										"value": {
+											"value": "@if(contains(activity('ProcessPool').output, 'runPageUrl'),\n    activity('ProcessPool').output.runPageUrl,\n    ''\n)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"value": "JOB_CLUSTER",
+							"activities": [
+								{
+									"name": "ProcessJob",
+									"type": "DatabricksNotebook",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"notebookPath": {
+											"value": "@pipeline().parameters.ADB_NOTEBOOK_PATH_CD",
+											"type": "Expression"
+										},
+										"baseParameters": {
+											"run_cd": {
+												"value": "@pipeline().parameters.RUN_CD",
+												"type": "Expression"
+											},
+											"pipeline_cd": {
+												"value": "@pipeline().parameters.PIPELINE_CD",
+												"type": "Expression"
+											},
+											"trigger_ts": {
+												"value": "@pipeline().parameters.TRIGGER_TS",
+												"type": "Expression"
+											},
+											"output_category_cd": {
+												"value": "@pipeline().parameters.OUTPUT_CATEGORY_CD",
+												"type": "Expression"
+											}
+										}
+									},
+									"linkedServiceName": {
+										"referenceName": "AzureDatabricksJob",
+										"type": "LinkedServiceReference",
+										"parameters": {
+											"workspace_url": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_URL",
+												"type": "Expression"
+											},
+											"workspace_resource_id": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_RESOURCE_CD",
+												"type": "Expression"
+											},
+											"cluster_version": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_VERSION_CD",
+												"type": "Expression"
+											},
+											"cluster_node_type": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_NODE_TYPE_CD",
+												"type": "Expression"
+											},
+											"worker_nodes": {
+												"value": "@pipeline().parameters.ADB_JOB_CLUSTER_WORKERS_CD",
+												"type": "Expression"
+											},
+											"workspace_init_script_path": {
+												"value": "@pipeline().parameters.ADB_WORKSPACE_INIT_SCRIPT_PATH_CD",
+												"type": "Expression"
+											}
+										}
+									}
+								},
+								{
+									"name": "SetActivityStatusCdJob",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessJob",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "activity_status_cd",
+										"value": {
+											"value": "@activity('ProcessJob').output.runOutput.ACTIVITY_STATUS_CD",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetElapsedSecondsNuJob",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessJob",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "elapsed_seconds_nu",
+										"value": {
+											"value": "@activity('ProcessJob').output.runOutput.ELAPSED_SECONDS_NU",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetErrorDeJob",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessJob",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "error_de",
+										"value": {
+											"value": "@activity('ProcessJob').output.runOutput.ERROR_DE",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetFailedElapsedSecondsNuJob",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessJob",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "failed_elapsed_seconds_nu",
+										"value": {
+											"value": "@activity('ProcessJob').output.executionDuration",
+											"type": "Expression"
+										}
+									}
+								},
+								{
+									"name": "SetFailedErrorDeJob",
+									"type": "SetVariable",
+									"dependsOn": [
+										{
+											"activity": "ProcessJob",
+											"dependencyConditions": [
+												"Failed"
+											]
+										}
+									],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "failed_error_de",
+										"value": {
+											"value": "@if(contains(activity('ProcessJob').output, 'runPageUrl'),\n    activity('ProcessJob').output.runPageUrl,\n    ''\n)",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					],
+					"defaultActivities": [
+						{
+							"name": "Process",
+							"type": "DatabricksNotebook",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"notebookPath": {
+									"value": "@pipeline().parameters.ADB_NOTEBOOK_PATH_CD",
+									"type": "Expression"
+								},
+								"baseParameters": {
+									"run_cd": {
+										"value": "@pipeline().parameters.RUN_CD",
+										"type": "Expression"
+									},
+									"pipeline_cd": {
+										"value": "@pipeline().parameters.PIPELINE_CD",
+										"type": "Expression"
+									},
+									"trigger_ts": {
+										"value": "@pipeline().parameters.TRIGGER_TS",
+										"type": "Expression"
+									},
+									"output_category_cd": {
+										"value": "@pipeline().parameters.OUTPUT_CATEGORY_CD",
+										"type": "Expression"
+									}
+								}
+							},
+							"linkedServiceName": {
+								"referenceName": "AzureDatabricks",
+								"type": "LinkedServiceReference",
+								"parameters": {
+									"workspace_url": {
+										"value": "@pipeline().parameters.ADB_WORKSPACE_URL",
+										"type": "Expression"
+									},
+									"workspace_resource_id": {
+										"value": "@pipeline().parameters.ADB_WORKSPACE_RESOURCE_CD",
+										"type": "Expression"
+									},
+									"existing_cluster_id": {
+										"value": "@pipeline().parameters.ADB_EXISTING_CLUSTER_CD",
+										"type": "Expression"
+									}
+								}
+							}
+						},
+						{
+							"name": "SetActivityStatusCd",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Process",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "activity_status_cd",
+								"value": {
+									"value": "@activity('Process').output.runOutput.ACTIVITY_STATUS_CD",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetElapsedSecondsNu",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Process",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "elapsed_seconds_nu",
+								"value": {
+									"value": "@activity('Process').output.runOutput.ELAPSED_SECONDS_NU",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetErrorDe",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Process",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "error_de",
+								"value": {
+									"value": "@activity('Process').output.runOutput.ERROR_DE",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetFailedElapsedSecondsNu",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Process",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "failed_elapsed_seconds_nu",
+								"value": {
+									"value": "@activity('Process').output.executionDuration",
+									"type": "Expression"
+								}
+							}
+						},
+						{
+							"name": "SetFailedErrorDe",
+							"type": "SetVariable",
+							"dependsOn": [
+								{
+									"activity": "Process",
+									"dependencyConditions": [
+										"Failed"
+									]
+								}
+							],
+							"policy": {
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"variableName": "failed_error_de",
+								"value": {
+									"value": "@if(contains(activity('Process').output, 'runPageUrl'),\n    activity('Process').output.runPageUrl,\n    ''\n)",
+									"type": "Expression"
+								}
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"PIPELINE_CD": {
+				"type": "string"
+			},
+			"RUN_CD": {
+				"type": "string"
+			},
+			"TRIGGER_CD": {
+				"type": "string"
+			},
+			"TRIGGER_TS": {
+				"type": "string"
+			},
+			"OUTPUT_CATEGORY_CD": {
+				"type": "string"
+			},
+			"ASQL_FULLY_QUALIFIED_DOMAIN_CD": {
+				"type": "string"
+			},
+			"ASQL_DATABASE_CD": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_URL": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_RESOURCE_CD": {
+				"type": "string"
+			},
+			"ADB_WORKSPACE_INIT_SCRIPT_PATH_CD": {
+				"type": "string"
+			},
+			"ADB_NOTEBOOK_PATH_CD": {
+				"type": "string"
+			},
+			"ADB_EXISTING_CLUSTER_CD": {
+				"type": "string"
+			},
+			"ADB_INSTANCE_POOL_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_VERSION_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_NODE_TYPE_CD": {
+				"type": "string"
+			},
+			"ADB_JOB_CLUSTER_WORKERS_CD": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"activity_status_cd": {
+				"type": "String"
+			},
+			"elapsed_seconds_nu": {
+				"type": "Integer"
+			},
+			"error_de": {
+				"type": "String"
+			},
+			"failed_elapsed_seconds_nu": {
+				"type": "Integer"
+			},
+			"failed_error_de": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}

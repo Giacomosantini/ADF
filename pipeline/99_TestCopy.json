@@ -1,0 +1,360 @@
+{
+	"name": "99_TestCopy",
+	"properties": {
+		"activities": [
+			{
+				"name": "CopyDigital",
+				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [
+					{
+						"activity": "ValidationAws",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AmazonS3ReadSettings",
+							"recursive": false,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "PreserveHierarchy"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_AmazonS3_DelimitedText_WithCompression",
+						"type": "DatasetReference",
+						"parameters": {
+							"bucket": "total-audience",
+							"region": "eu-south-1",
+							"akv_name": "akv-ao-pov",
+							"access_key_id_secret_name": "var-s3-total-audience-access-key-id",
+							"secret_access_key_secret_name": "var-s3-total-audience-secret-access-key",
+							"file_path": "digital/ed_live",
+							"file_name": "20240408_ed_live.zip",
+							"file_delimiter": {
+								"value": "    ",
+								"type": "Expression"
+							},
+							"file_extension": "ZipDeflate",
+							"file_compression": "ZipDeflate",
+							"file_encoding": "UTF-8",
+							"file_row_delimiter": {
+								"value": "\n",
+								"type": "Expression"
+							},
+							"quote_character": "\"",
+							"escape_character": "\\",
+							"first_row_as_header": {
+								"value": "@bool(1)",
+								"type": "Expression"
+							},
+							"null_value": " "
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_AzureDataLakeStorageGen2_Parquet",
+						"type": "DatasetReference",
+						"parameters": {
+							"storage_acount": "staopov",
+							"blob_container": "aonline",
+							"file_path": "raw/parquet/aws/total-audience/digital",
+							"file_name": "20240408_ed_live.zip"
+						}
+					}
+				]
+			},
+			{
+				"name": "ValidationAws",
+				"type": "Validation",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [
+					{
+						"activity": "CopyFileSystem",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "DS_AmazonS3_DelimitedText_Validate",
+						"type": "DatasetReference",
+						"parameters": {
+							"bucket": "total-audience",
+							"region": "eu-south-1",
+							"akv_name": "akv-ao-pov",
+							"access_key_id_secret_name": "var-s3-total-audience-access-key-id",
+							"secret_access_key_secret_name": "var-s3-total-audience-secret-access-key",
+							"file_path": "digital/ed_live"
+						}
+					},
+					"timeout": "0.00:00:10",
+					"sleep": 10,
+					"childItems": true
+				}
+			},
+			{
+				"name": "CopyTvtrad",
+				"type": "Copy",
+				"state": "Inactive",
+				"onInactiveMarkAs": "Succeeded",
+				"dependsOn": [
+					{
+						"activity": "ValidationAws",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AmazonS3ReadSettings",
+							"recursive": false,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "PreserveHierarchy"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_AmazonS3_DelimitedText_Validate",
+						"type": "DatasetReference",
+						"parameters": {
+							"bucket": "total-audience",
+							"region": "eu-south-1",
+							"akv_name": "akv-ao-pov",
+							"access_key_id_secret_name": "var-s3-total-audience-access-key-id",
+							"secret_access_key_secret_name": "var-s3-total-audience-secret-access-key",
+							"file_path": "digital/ed_live"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_AzureDataLakeStorageGen2_Parquet",
+						"type": "DatasetReference",
+						"parameters": {
+							"storage_acount": "staopov",
+							"blob_container": "aonline",
+							"file_path": "raw/parquet/aws/total-audience/tvtrad",
+							"file_name": "20240311_tvtrad_live_vosdal.zip"
+						}
+					}
+				]
+			},
+			{
+				"name": "CopyFileSystem",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "FileServerReadSettings",
+							"recursive": false,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings",
+							"skipLineCount": 8
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "PreserveHierarchy"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "Months",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "Months",
+									"type": "String",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "Video Livello12 - tipologia",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "a",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "Media Views (PLAY)",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "b",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "Media Views (PLAY) (web+app mobile)",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "c",
+									"physicalType": "UTF8"
+								}
+							},
+							{
+								"source": {
+									"name": "Media Views (PLAY) (mhp+apptv+hbbtv)",
+									"type": "String",
+									"physicalType": "String"
+								},
+								"sink": {
+									"name": "d",
+									"physicalType": "UTF8"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_FileSystem_DelimitedText_WithoutCompression",
+						"type": "DatasetReference",
+						"parameters": {
+							"host": "\\\\nasto4\\ASCOLTIONLINE\\",
+							"user": "rai\\srvascolti",
+							"akv_name": "akv-ao-pov",
+							"akv_secret_pwd": "var-nasto4-ao-pwd",
+							"file_path": "FullDayByViewing",
+							"file_name": "Nielsen-20231129-FullDay-ByViewing",
+							"file_delimiter": ";",
+							"file_extension": ".csv",
+							"file_encoding": "UTF-8",
+							"file_row_delimiter": "\\r\\n",
+							"quote_character": "\\\"",
+							"escape_character": "\\\"",
+							"first_row_as_header": "true",
+							"null_value": " "
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_AzureDataLakeStorageGen2_Parquet",
+						"type": "DatasetReference",
+						"parameters": {
+							"storage_acount": "staopov",
+							"blob_container": "aonline",
+							"file_path": "raw/parquet/2024/05/15",
+							"file_name": "TrendPerGenere"
+						}
+					}
+				]
+			}
+		],
+		"folder": {
+			"name": "Utils"
+		},
+		"annotations": []
+	}
+}
